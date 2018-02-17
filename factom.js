@@ -8,6 +8,7 @@ factomdjs.setFactomNode('http://localhost:8088/v2')
 const NULL_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
 async function getAllEntries(chainId) {
+    console.log(`Getting all entries of ${chainId}`)
     const allEntries = [];
     const chainHead = await factomdjs.chainHead(chainId);
 
@@ -16,20 +17,26 @@ async function getAllEntries(chainId) {
         const entryBlock = await factomdjs.entryBlock(keymr);
 
         const entries = await Promise.map(entryBlock.entrylist.map(e => e.entryhash), factomdjs.entry);
-        allEntries.push(...entries);
+        allEntries.push(...entries.map(decodeEntry));
 
         keymr = entryBlock.header.prevkeymr;
     }
 
-    console.log(allEntries)
+    //console.log(allEntries)
     return Promise.resolve(allEntries);
 }
 
-// async function chainExists(chainId) {
-//     return factomdjs.chainHead(chainId)
-//         .then(() => true)
-//         .catch(() => false);
-// }
+function decodeEntry(entry) {
+    entry.content = Buffer.from(entry.content, 'hex');
+    entry.extids = entry.extids.map(extid => Buffer.from(extid, 'hex'));
+    return entry;
+}
+
+async function chainExists(chainId) {
+    return factomdjs.chainHead(chainId)
+        .then(() => true)
+        .catch(() => false);
+}
 
 function getChainId(chain) {
     const extIdsHashes = chain.extids.map(id => {
@@ -68,10 +75,10 @@ async function addChain(chain, ecpub) {
     console.log(committed)
     console.log("-------------")
     console.log(revealed)
-    return Promise.resolve(revealed.chainid);
+    console.log("-------------")
+    return Promise.resolve(revealed);
 }
 
-// TODO: test for too big entry
 async function addEntry(entry, ecpub) {
     const {
         commit,
@@ -94,7 +101,7 @@ async function addEntry(entry, ecpub) {
     console.log(committed)
     console.log("-------------")
     console.log(revealed)
-
+    console.log("-------------")
     return Promise.resolve(revealed.entryhash);
 }
 
@@ -102,8 +109,9 @@ async function addEntries(entries, ecpub) {
     return Promise.map(entries, entry => addEntry(entry, ecpub));
 }
 
-function toHex(str) {
-    return Buffer.from(str).toString('hex');
+function toHex(input) {
+    const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input);
+    return buffer.toString('hex');
 }
 
 function entrySize(entry) {
@@ -194,19 +202,19 @@ function waitOnRevealAck(hash, chainid, to) {
 //     .then(console.log)
 //     .catch(console.error);
 
-const l = 1024 - 2 * 2 - 3 - 3;
+// const l = 1024 - 2 * 2 - 3 - 3;
 
-const str = new Array(l + 1).join('r');
-console.log(str.length)
+// const str = new Array(l + 1).join('r');
+// console.log(str.length)
 
-const entry = {
-    chainid: "ac44e52c539065efa3563104248c984ef893f0e3351d7c59c93bf022d2214e63",
-    extids: ["arf", "arf"],
-    content: str
-};
-console.log(entryCost(entry))
+// const entry = {
+//     chainid: "ac44e52c539065efa3563104248c984ef893f0e3351d7c59c93bf022d2214e63",
+//     extids: ["arf", "arf"],
+//     content: str
+// };
+// console.log(entryCost(entry))
 // addEntry(entry, "EC2vXWYkAPduo3oo2tPuzA44Tm7W6Cj7SeBr3fBnzswbG5rrkSTD")
-//     .then(entryHash => waitRevealAck(entryHash, entry.chainid))
+//     .then(entryHash => waitOnRevealAck(entryHash, entry.chainid))
 //     .then(console.log)
 //     .catch(console.error)
 
@@ -230,5 +238,7 @@ module.exports = {
     entryCost,
     addChain,
     addEntry,
-    addEntries
+    addEntries,
+    waitOnRevealAck,
+    waitOnCommitAck
 }

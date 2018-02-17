@@ -1,38 +1,57 @@
 const EC = require('elliptic').ec,
-    { getNumberOfParts } = require('./utils'),
-    factomdjs = require('factomdjs');
+    {
+        getNumberOfParts
+    } = require('./utils'),
+    Promise = require('bluebird'),
+    fs = require('fs'),
+    zlib = Promise.promisifyAll(require('zlib')),
+    factom = require('../factom');
 
 const ec = new EC('ed25519');
 
-function read(chainId, url) {
-    const {
-        header,
-        parts
-    } = readPartsFromChain(chainId);
-
+async function read(chainid) {
+    // TODO: this should be improved to protect against spam attack
+    // TODO: fetch parts that signaure match (verify parts) and stop as soon as enough parts are retrieved
+    const entries = await factom.getAllEntries(chainid);
+    const header = convertFirstEntryToHeader(entries[0]);
+    console.log(header)
+    const parts = convertEntriesToParts(entries.slice(1));
     const data = getData(parts);
-    validate(data, header);
+    validateData(header, data);
 
-    return {
-        filename: header.filename,
-        data: data
-    };
+    return zlib.unzipAsync(data)
+        .then(file => fs.writeFileAsync(header.filename + '.factom', file));
 }
 
-function readPartsFromChain(chaindId) {
-    // Read header
-    const header = {};
-    // Iterate over the entries of the chain
-    // For each verify the signature, if it's valide, take it
-    const nbOfParts = getNumberOfParts(header.size);
+function convertFirstEntryToHeader(entry) {
+    const extids = entry.extids;
+    return {
+        version: parseInt(extids[0]),
+        publicKey: extids[1].toString(),
+        filename: extids[2],
+        size: parseInt(extids[3]),
+        signature: extids[4],
+        fileDescription: entry.content
+    }
+}
+
+function convertEntriesToParts(entries) {
+    return entries.map(convertEntryToPart);
+}
+
+function convertEntryToPart(entry) {
+    return {
+        order: parseInt(entry.extids[0]),
+        signature: entry.extids[1],
+        content: entry.content
+    }
 }
 
 function getData(parts) {
-    const dataHex = parts.sort((a, b) => a.order - b.order)
-        .map(p => p.content)
-        .join('');
+    const data = parts.sort((a, b) => a.order - b.order)
+        .map(p => p.content);
 
-    return Buffer.from(dataHex, 'hex');
+    return Buffer.concat(data);
 }
 
 function validateData(header, data) {
@@ -47,8 +66,5 @@ function validateData(header, data) {
 }
 
 module.exports = {
-    read,
-    readPartsFromChain,
-    getData,
-    validateData
+    read
 }

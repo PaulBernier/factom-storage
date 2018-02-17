@@ -8,6 +8,7 @@ function getNumberOfParts(size) {
 }
 
 // TODO: incorrect I think
+// TODO: 11 for header actually depends on the size of file description. Limit to 1 EC?
 function getEcCost(size) {
     // +11 for the chain creation and the header (first entry)
     return 11 + Math.ceil((size + getNumberOfParts(size) * HEADER_SIZE) / 1024);
