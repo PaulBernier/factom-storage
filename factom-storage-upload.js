@@ -1,4 +1,8 @@
-const program = require('commander');
+const program = require('commander'),
+    colors = require('colors'),
+    Promise = require('bluebird'),
+    fs = Promise.promisifyAll(require('fs')),
+    writer = require('./src/writer.js');
 
 program
     .usage('Usage: factom-storage write [options] <file> <EC address for payment>')

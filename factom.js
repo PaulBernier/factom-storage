@@ -3,35 +3,72 @@ const factomdjs = require('../factomdjs/src/factomd'),
     Promise = require('bluebird'),
     crypto = require('crypto');
 
-factomdjs.setFactomNode('http://localhost:8088/v2')
+// TODO: uniformize chainid, chainId, extids, extIds
 
 const NULL_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
-async function getAllEntries(chainId) {
-    console.log(`Getting all entries of ${chainId}`)
+function setFactomNode(url) {
+    factomdjs.setFactomNode(url);
+}
+
+function setFactomWallet(url) {
+    walletd.setFactomNode(url);
+}
+
+async function getAllEntriesOfChain(chainId) {
     const allEntries = [];
     const chainHead = await factomdjs.chainHead(chainId);
 
     let keymr = chainHead.chainhead;
     while (keymr !== NULL_HASH) {
-        const entryBlock = await factomdjs.entryBlock(keymr);
+        const {
+            entries,
+            prevkeymr
+        } = await getAllEntriesOfEntryBlock(keymr);
+        allEntries.push(...entries.reverse());
 
-        const entries = await Promise.map(entryBlock.entrylist.map(e => e.entryhash), factomdjs.entry);
-        allEntries.push(...entries.map(decodeEntry));
+        keymr = prevkeymr;
+    }
 
+    return Promise.resolve(allEntries.reverse());
+}
+
+async function getFirstEntry(chainId) {
+    const chainHead = await factomdjs.chainHead(chainId);
+    let keymr = chainHead.chainhead;
+    let entryBlock;
+    while (keymr !== NULL_HASH) {
+        entryBlock = await factomdjs.entryBlock(keymr);
         keymr = entryBlock.header.prevkeymr;
     }
 
-    //console.log(allEntries)
-    return Promise.resolve(allEntries);
+    return factomdjs.entry(entryBlock.entrylist[0].entryhash)
+        .then(decodeEntry);
+}
+
+function getChainHead(chainId) {
+    return factomdjs.chainHead(chainId);
+}
+
+async function getAllEntriesOfEntryBlock(keymr) {
+    const entryBlock = await factomdjs.entryBlock(keymr);
+
+    const entries = await Promise.map(entryBlock.entrylist.map(e => e.entryhash), factomdjs.entry);
+
+    return {
+        entries: entries.map(decodeEntry),
+        prevkeymr: entryBlock.header.prevkeymr
+    }
 }
 
 function decodeEntry(entry) {
-    entry.content = Buffer.from(entry.content, 'hex');
-    entry.extids = entry.extids.map(extid => Buffer.from(extid, 'hex'));
+    entry.content = entry.content ? Buffer.from(entry.content, 'hex') : Buffer.from('');
+    entry.extids = Array.isArray(entry.extids) ? entry.extids.map(extid => Buffer.from(extid, 'hex')) : [];
+
     return entry;
 }
 
+// TODO: test
 async function chainExists(chainId) {
     return factomdjs.chainHead(chainId)
         .then(() => true)
@@ -53,7 +90,6 @@ function getChainId(chain) {
 }
 
 async function addChain(chain, ecpub) {
-    // Possible error: chain already exists
     const {
         commit,
         reveal
@@ -119,16 +155,21 @@ function entrySize(entry) {
     let size = 35;
 
     if (Array.isArray(entry.extids)) {
-        const extidsLength = entry.extids.join("").length;
+        const extidsBuffers = entry.extids.map(extid => Buffer.isBuffer(extid) ? extid : Buffer.from(extid));
+        const extidsLength = Buffer.concat(extidsBuffers).length;
         size += 2 * entry.extids.length + extidsLength;
 
     }
 
     if (entry.content) {
-        size += entry.content.length
+        size += entry.content.length;
     }
 
     return size;
+}
+
+function chainCost(firstEntry) {
+    return 10 + entryCost(firstEntry);
 }
 
 function entryCost(entry) {
@@ -147,17 +188,19 @@ function waitOnCommitAck(txid, to) {
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
         const clearId = setInterval(async function () {
-            console.log('...\n')
+            process.stdout.write(".");
             const ackResponse = await factomdjs.ack(txid, 'c');
             const status = ackResponse.commitdata.status;
 
             if (status !== "Unknown" && status !== "NotConfirmed") {
                 clearInterval(clearId);
+                process.stdout.write('\n');
                 resolve(status);
             }
 
             if ((Date.now() - startTime) > timeout * 1000) {
                 clearInterval(clearId);
+                process.stdout.write('\n');
                 reject('Ack timeout');
             }
 
@@ -173,17 +216,19 @@ function waitOnRevealAck(hash, chainid, to) {
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
         const clearId = setInterval(async function () {
-            console.log('...\n')
+            process.stdout.write(".");
             const ackResponse = await factomdjs.ack(hash, chainid);
             const status = ackResponse.entrydata.status;
 
             if (status !== "Unknown" && status !== "NotConfirmed") {
                 clearInterval(clearId);
+                process.stdout.write('\n');
                 resolve(status);
             }
 
             if ((Date.now() - startTime) > timeout * 1000) {
                 clearInterval(clearId);
+                process.stdout.write('\n');
                 reject('Ack timeout');
             }
 
@@ -230,12 +275,19 @@ function waitOnRevealAck(hash, chainid, to) {
 //     .then(console.log)
 //     .catch(console.error);
 
-// TODO: implement ack
+// getFirstEntry('43649840f6342be91be137e46f447cffaa6796b7fe6f4fdd8acb80744ab1cd6c').then(console.log)
 
 module.exports = {
-    getAllEntries,
+    setFactomNode,
+    setFactomWallet,
+    getAllEntriesOfChain,
+    getAllEntriesOfEntryBlock,
+    getFirstEntry,
+    getChainHead,
     getChainId,
+    entrySize,
     entryCost,
+    chainCost,
     addChain,
     addEntry,
     addEntries,
