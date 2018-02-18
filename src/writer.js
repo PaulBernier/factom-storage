@@ -10,11 +10,16 @@ const HEADER_SIZE = 35 + 2 * 2 + 4 + 70;
 const MAX_PARTS_CONTENT_BYTE_SIZE = 10275 - HEADER_SIZE;
 const ec = new EC('ed25519');
 
-// TODO: input should be buffer
-async function write(filepath, ecpub, fileDescription) {
+// TODO: check config of factom node and wallet (responding)
+async function write(fileName, data, ecpub, fileDescription, url) {
+    if (url) {
+        factom.setFactomNode(url);
+    }
+
+
     const key = ec.genKeyPair();
-    const buffer = await fs.readFileAsync(filepath).then(f => zlib.gzipAsync(f));
-    const header = getHeader(buffer, key, path.basename(filepath), fileDescription);
+    const buffer = await zlib.gzipAsync(data);
+    const header = getHeader(buffer, key, fileName, fileDescription);
     const parts = getParts(buffer, key);
 
     console.log(header);
@@ -63,7 +68,7 @@ function getPart(buffer, i, key) {
         content: content,
         signature: signature,
         order: i
-    }
+    };
 }
 
 function getNumberOfParts(size) {

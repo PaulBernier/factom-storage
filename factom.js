@@ -146,6 +146,10 @@ async function addEntries(entries, ecpub) {
 }
 
 function toHex(input) {
+    if (!input) {
+        return '';
+    }
+
     const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input);
     return buffer.toString('hex');
 }

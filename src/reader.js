@@ -5,13 +5,14 @@ const EC = require('elliptic').ec,
 
 const ec = new EC('ed25519');
 
+// TODO: check config of factom node (responding)
 async function read(chainid, url) {
     if (url) {
         factom.setFactomNode(url);
     }
 
     console.log(`Retrieving data from chain ${chainid}...`);
-    const entries = await factom.getAllEntriesOfChain(chainid).catch(e => {throw `Failed to fetch chain entries: ${ e.message}`});
+    const entries = await factom.getAllEntriesOfChain(chainid);
 
     console.log('Rebuilding file...');
     const header = convertFirstEntryToHeader(entries[0]);

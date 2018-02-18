@@ -23,4 +23,4 @@ reader.read(program.args[0], program.url)
         console.log(colors.green(result.fileDescription.toString()));
 
         return fs.writeFileAsync(result.fileName + '.factom', result.data);
-    }).catch(e => console.log(colors.red(JSON.stringify(e, null, 4))));
+    }).catch(e => console.log(colors.red(e instanceof Error ? e.stack : JSON.stringify(e, null, 4))));
