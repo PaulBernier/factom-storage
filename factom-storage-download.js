@@ -1,8 +1,11 @@
 const program = require('commander'),
     colors = require('colors'),
     Promise = require('bluebird'),
+    log = require('winston'),
     fs = Promise.promisifyAll(require('fs')),
     reader = require('./src/reader.js');
+
+log.level = 'debug'
 
 // TODO: add verbose option
 program
@@ -18,9 +21,9 @@ if (!program.args[0]) {
 
 reader.read(program.args[0], program.url)
     .then(function (result) {
-        console.log(colors.green(`File ${result.fileName} recovered from Factom blockchain!`));
-        console.log(colors.green('Description:'));
-        console.log(colors.green(result.fileDescription.toString()));
+        log.info(colors.green(`File ${result.fileName} recovered from Factom blockchain!`));
+        log.info(colors.green('Description:'));
+        log.info(colors.green(result.fileDescription.toString()));
 
         return fs.writeFileAsync(result.fileName + '.factom', result.data);
-    }).catch(e => console.log(colors.red(e instanceof Error ? e.stack : JSON.stringify(e, null, 4))));
+    }).catch(e => log.error(colors.red(e instanceof Error ? e.stack : JSON.stringify(e, null, 4))));

@@ -1,22 +1,26 @@
-const EC = require('elliptic').ec,
+const EdDSA = require('elliptic').eddsa,
     Promise = require('bluebird'),
     zlib = Promise.promisifyAll(require('zlib')),
-    factom = require('../factom');
+    log = require('winston'),
+    // TODO: package
+    factom = require('../../factomjs/factom');
 
-const ec = new EC('ed25519');
+const ec = new EdDSA('ed25519');
 
-// TODO: check config of factom node (responding)
-async function read(chainid, url) {
+async function read(chainId, url) {
     if (url) {
         factom.setFactomNode(url);
     }
+    await factom.properties().catch(e => {
+        throw 'Failed to reach the Factom Node: ' + e;
+    });
 
-    console.log(`Retrieving data from chain ${chainid}...`);
-    const entries = await factom.getAllEntriesOfChain(chainid);
+    log.info(`Retrieving data from chain ${chainId}...`);
+    const entries = await getEntries(chainId);
 
-    console.log('Rebuilding file...');
+    log.info('Rebuilding file...');
     const header = convertFirstEntryToHeader(entries[0]);
-    const parts = convertEntriesToParts(entries.slice(1), header.publicKey);
+    const parts = convertEntriesToParts(entries.slice(1), header.key, header.fileHash);
     const zippedData = getData(parts);
     validateData(header, zippedData);
 
@@ -28,47 +32,55 @@ async function read(chainid, url) {
         }));
 }
 
+function getEntries(chainId) {
+    return factom.getAllEntriesOfChain(chainId).catch(e => {
+        throw 'Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. ' +
+            JSON.stringify(e);
+    });
+}
+
 function convertFirstEntryToHeader(entry) {
-    const extids = entry.extids;
-    if (extids.length === 0 || extids[0].toString() !== 'factom-storage') {
+    const extIds = entry.extIds;
+    if (extIds.length === 0 || extIds[0].toString() !== 'factom-storage') {
         throw 'First entry of the chain is not a file header entry';
     }
 
     return {
-        version: parseInt(extids[1]),
-        publicKeyEncoded: extids[2],
-        filename: extids[3],
-        size: parseInt(extids[4]),
-        signature: extids[5],
+        version: parseInt(extIds[1]),
+        publicKey: extIds[2],
+        filename: extIds[3],
+        size: parseInt(extIds[4]),
+        fileHash: extIds[5],
+        signature: extIds[6],
         fileDescription: entry.content,
-        publicKey: ec.keyFromPublic(extids[2].toString('hex'), 'hex')
+        key: ec.keyFromPublic([...extIds[2]])
     };
 }
 
-function convertEntriesToParts(entries, publicKey) {
-    const validEntries = getValidPartEntries(entries, publicKey);
+function convertEntriesToParts(entries, key, fileHash) {
+    const validEntries = getValidPartEntries(entries, key, fileHash);
 
     if (validEntries.length !== entries.length) {
-        console.log(`${entries.length - validEntries.length} invalid entries discarded`);
+        log.warn(`${entries.length - validEntries.length} invalid entries discarded`);
     }
 
     return validEntries.map(convertEntryToPart);
 }
 
-function getValidPartEntries(entries, publicKey) {
-    return entries.filter(function(entry) {
-        if (entry.extids.length < 2) {
+function getValidPartEntries(entries, key, fileHash) {
+    return entries.filter(function (entry) {
+        if (entry.extIds.length < 2) {
             return false;
         }
 
-        return publicKey.verify(entry.content, entry.extids[1]);
+        return key.verify(Buffer.concat([entry.content, fileHash]), [...entry.extIds[1]]);
     });
 }
 
 function convertEntryToPart(entry) {
     return {
-        order: entry.extids[0].readInt32BE(),
-        signature: entry.extids[1],
+        order: entry.extIds[0].readInt32BE(),
+        signature: entry.extIds[1],
         content: entry.content
     };
 }
@@ -85,11 +97,11 @@ function validateData(header, data) {
     if (data.length !== header.size) {
         throw 'Data length doesn\'t match the size of the original file';
     }
-    if (!header.publicKey.verify(data, header.signature)) {
+    if (!header.key.verify(Buffer.concat([data, header.fileHash]), [...header.signature])) {
         throw 'Data signature doesn\'t match the signature of the original file';
     }
 }
 
 module.exports = {
     read
-}
+};
