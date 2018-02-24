@@ -3,15 +3,21 @@ const EdDSA = require('elliptic').eddsa,
     zlib = Promise.promisifyAll(require('zlib')),
     log = require('winston'),
     // TODO: package
-    factom = require('../../factomjs/factom');
+    {
+        FactomCli
+    } = require('../../factomjs');
 
 const ec = new EdDSA('ed25519');
 
+let fctCli;
+
 async function read(chainId, url) {
-    if (url) {
-        factom.setFactomNode(url);
-    }
-    await factom.properties().catch(e => {
+    // TODO: take input config
+    fctCli = new FactomCli({
+        host: 'localhost',
+        port: 8088
+    });
+    await fctCli.getProperties().catch(e => {
         throw 'Failed to reach the Factom Node: ' + e;
     });
 
@@ -33,7 +39,7 @@ async function read(chainId, url) {
 }
 
 function getEntries(chainId) {
-    return factom.getAllEntriesOfChain(chainId).catch(e => {
+    return fctCli.getAllEntriesOfChain(chainId).catch(e => {
         throw 'Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. ' +
             JSON.stringify(e);
     });

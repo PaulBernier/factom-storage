@@ -6,18 +6,30 @@ const crypto = require('crypto'),
     zlib = Promise.promisifyAll(require('zlib')),
     fctUtils = require('factomjs-util'),
     // TODO: package
-    factom = require('../../factomjs/factom.js');
+    factom = require('../../factomjs');
+
+const {
+    Entry,
+    Chain,
+    FactomCli,
+    entryCost,
+    chainCost
+} = factom;
 
 // 35 (mandatory entry header) + 4 (size of extID) + 4 (part order) + 64 (part signature) 
 const HEADER_SIZE = 35 + 2 * 2 + 4 + 64;
 const MAX_PARTS_CONTENT_BYTE_SIZE = 10275 - HEADER_SIZE;
 const ec = new EdDSA('ed25519');
 
+let fctCli;
+
 // TODO: private key should be input here. If absent, use the private EC key?
 async function write(fileName, data, ecAddress, fileDescription, url) {
-    if (url) {
-        factom.setFactomNode(url);
-    }
+    // TODO: take input config
+    fctCli = new FactomCli({
+        host: 'localhost',
+        port: 8088
+    });
     validateRequest(ecAddress);
 
     const secret = crypto.randomBytes(32);
@@ -41,7 +53,7 @@ async function validateRequest(ecAddress) {
     if (!fctUtils.isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
         throw `${ecAddress} is not a valid EC address`;
     }
-    await factom.properties().catch(e => {
+    await fctCli.getProperties().catch(e => {
         throw 'Failed to reach the Factom Node: ' + e;
     });
 }
@@ -93,19 +105,19 @@ function getNumberOfParts(size) {
 
 function getHumanReadableECPublicKey(ecPrivate) {
     const secret = fctUtils.privateHumanAddressStringToPrivate(ecPrivate);
-    const key = ec.keyFromSecret(secret);  
+    const key = ec.keyFromSecret(secret);
     return fctUtils.publicECKeyToHumanAddress(Buffer.from(key.getPublic()));
 }
 
 async function persist(header, parts, ecAddress) {
 
-    const firstEntry = convertHeaderToFirstEntry(header);
-    const entries = convertPartsToEntries(parts);
-    const cost = entries.reduce((acc, entry) => acc + factom.entryCost(entry), factom.chainCost(firstEntry));
+    const chain = new Chain(convertHeaderToFirstEntry(header));
+    const entries = convertPartsToEntries(parts, chain.chainId);
+    const cost = entries.reduce((acc, entry) => acc + entryCost(entry), chainCost(chain));
 
     const publicKey = ecAddress.substring(0, 2) === 'EC' ? ecAddress : getHumanReadableECPublicKey(ecAddress);
 
-    const availableBalance = await factom.getBalance(publicKey);
+    const availableBalance = await fctCli.getBalance(publicKey);
 
     if (cost > availableBalance) {
         throw `EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${ecAddress} is not enough.`;
@@ -120,7 +132,7 @@ async function persist(header, parts, ecAddress) {
     const {
         chainId,
         entryHash
-    } = await createFileChain(firstEntry, ecAddress);
+    } = await createFileChain(chain, ecAddress);
 
     await waitOnChainCreation(entryHash, chainId);
     await persistParts(chainId, entries, ecAddress);
@@ -149,51 +161,52 @@ async function getPromptConfirmation() {
     return ['yes', 'y'].includes(promptResult.confirmation);
 }
 
-async function waitOnChainCreation(entryhash, chainId) {
+async function waitOnChainCreation(entryHash, chainId) {
     log.info('Waiting confirmation of chain creation');
-    await factom.waitOnRevealAck(entryhash, chainId, 120);
+    await fctCli.waitOnRevealAck(entryHash, chainId, 120);
     log.info('Chain created');
 }
 
-function createFileChain(firstEntry, ecAddress) {
+function createFileChain(chain, ecAddress) {
     log.info('Creating file chain...');
-    return factom.addChain(firstEntry, ecAddress);
+
+    return fctCli.addChain(chain, ecAddress);
 }
 
 function convertHeaderToFirstEntry(header) {
-    return {
-        extIds: [
-            'factom-storage',
-            header.version.toString(),
-            header.publicKey,
-            header.filename,
-            header.size.toString(),
-            header.fileHash,
-            header.signature
-        ],
-        content: header.fileDescription
-    };
+    return new Entry.Builder()
+        .extId('factom-storage')
+        // TODO: optimize to int buffer
+        .extId(header.version.toString())
+        .extId(header.publicKey)
+        .extId(header.filename)
+        .extId(header.size.toString())
+        .extId(header.fileHash)
+        .extId(header.signature)
+        .content(header.fileDescription)
+        .build();
 }
 
 function persistParts(chainId, entries, ecpub) {
     log.info('Persisting parts...');
     entries.forEach(entry => entry.chainId = chainId);
-    return factom.addEntries(entries, ecpub);
+    return fctCli.addEntries(entries, ecpub);
 }
 
-function convertPartsToEntries(parts) {
-    return parts.map(convertPartToEntry);
+function convertPartsToEntries(parts, chainId) {
+    return parts.map(part => convertPartToEntry(part, chainId));
 }
 
-function convertPartToEntry(part) {
+function convertPartToEntry(part, chainId) {
     const orderBuffer = Buffer.alloc(4);
     orderBuffer.writeInt32BE(part.order);
-    const entry = {
-        extIds: [orderBuffer, part.signature],
-        content: part.content
-    };
 
-    return entry;
+    return new Entry.Builder()
+        .chainId(chainId)
+        .extId(orderBuffer)
+        .extId(part.signature)
+        .content(part.content)
+        .build();
 }
 
 function sha512(data) {
