@@ -3,15 +3,19 @@ const program = require('commander'),
     Promise = require('bluebird'),
     log = require('winston'),
     fs = Promise.promisifyAll(require('fs')),
-    reader = require('./src/reader.js');
+    {
+        getConnectionInformation
+    } = require('./util'),
+    {
+        Reader
+    } = require('./src/reader.js');
 
-log.level = 'debug'
 
 // TODO: add verbose option
 program
     .usage('Usage: factom-storage download <chain ID of the file>')
     .description('Download a file stored with Factom storage')
-    .option('-u, --url <url>', 'Factom node URL (e.g. http://localhost:8088/v2)')
+    .option('-s, --socket <socket>', 'IPAddress:port of factomd API (default localhost:8088)')
     .parse(process.argv);
 
 if (!program.args[0]) {
@@ -19,7 +23,9 @@ if (!program.args[0]) {
     process.exit(1);
 }
 
-reader.read(program.args[0], program.url)
+const factomdInformation = getConnectionInformation(program.socket, 8088);
+
+(new Reader(factomdInformation)).read(program.args[0])
     .then(function (result) {
         log.info(colors.green(`File ${result.fileName} recovered from Factom blockchain!`));
         log.info(colors.green('Description:'));

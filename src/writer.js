@@ -21,41 +21,52 @@ const HEADER_SIZE = 35 + 2 * 2 + 4 + 64;
 const MAX_PARTS_CONTENT_BYTE_SIZE = 10275 - HEADER_SIZE;
 const ec = new EdDSA('ed25519');
 
-let fctCli;
+class Writer {
+    constructor(opt) {
+        this.fctCli = new FactomCli(opt);
+    }
 
-// TODO: private key should be input here. If absent, use the private EC key?
-async function write(fileName, data, ecAddress, fileDescription, url) {
-    // TODO: take input config
-    fctCli = new FactomCli({
-        host: 'localhost',
-        port: 8088
-    });
-    validateRequest(ecAddress);
+    // TODO: private key should be input here. If absent, use the private EC key?
+    async write(fileName, data, ecAddress, fileDescription) {
+        validateRequest(this.fctCli, ecAddress);
 
-    const secret = crypto.randomBytes(32);
-    const key = ec.keyFromSecret(secret);
+        const secret = crypto.randomBytes(32);
+        const key = ec.keyFromSecret(secret);
 
-    const buffer = await zlib.gzipAsync(data);
-    const header = getHeader(buffer, key, fileName, fileDescription);
-    const parts = getParts(buffer, key, header.fileHash);
+        const {
+            header,
+            parts
+        } = await getHeaderAndParts(fileName, data, key, fileDescription);
 
-    log.debug(header);
+        log.debug(header);
 
-    const chainId = await persist(header, parts, ecAddress);
+        const chainId = await persist(this.fctCli, header, parts, ecAddress);
 
-    return {
-        chainId: chainId,
-        privateKey: secret.toString('hex')
-    };
+        return {
+            chainId: chainId,
+            privateKey: secret.toString('hex')
+        };
+    }
 }
 
-async function validateRequest(ecAddress) {
+async function validateRequest(fctCli, ecAddress) {
     if (!fctUtils.isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
         throw `${ecAddress} is not a valid EC address`;
     }
     await fctCli.getProperties().catch(e => {
         throw 'Failed to reach the Factom Node: ' + e;
     });
+}
+
+async function getHeaderAndParts(fileName, data, key, fileDescription) {
+    const buffer = await zlib.gzipAsync(data);
+    const header = getHeader(buffer, key, fileName, fileDescription);
+    const parts = getParts(buffer, key, header.fileHash);
+
+    return {
+        header,
+        parts
+    };
 }
 
 function getHeader(buffer, key, fileName, fileDescription) {
@@ -109,12 +120,13 @@ function getHumanReadableECPublicKey(ecPrivate) {
     return fctUtils.publicECKeyToHumanAddress(Buffer.from(key.getPublic()));
 }
 
-async function persist(header, parts, ecAddress) {
+async function persist(fctCli, header, parts, ecAddress) {
 
     const chain = new Chain(convertHeaderToFirstEntry(header));
     const entries = convertPartsToEntries(parts, chain.chainId);
     const cost = entries.reduce((acc, entry) => acc + entryCost(entry), chainCost(chain));
 
+    // TODO: this logic will be moved inside getBalance library
     const publicKey = ecAddress.substring(0, 2) === 'EC' ? ecAddress : getHumanReadableECPublicKey(ecAddress);
 
     const availableBalance = await fctCli.getBalance(publicKey);
@@ -132,10 +144,10 @@ async function persist(header, parts, ecAddress) {
     const {
         chainId,
         entryHash
-    } = await createFileChain(chain, ecAddress);
+    } = await createFileChain(fctCli, chain, ecAddress);
 
-    await waitOnChainCreation(entryHash, chainId);
-    await persistParts(chainId, entries, ecAddress);
+    await waitOnChainCreation(fctCli, entryHash, chainId);
+    await persistParts(fctCli, entries, ecAddress);
 
     return chainId;
 }
@@ -161,16 +173,16 @@ async function getPromptConfirmation() {
     return ['yes', 'y'].includes(promptResult.confirmation);
 }
 
-async function waitOnChainCreation(entryHash, chainId) {
-    log.info('Waiting confirmation of chain creation');
-    await fctCli.waitOnRevealAck(entryHash, chainId, 120);
-    log.info('Chain created');
-}
-
-function createFileChain(chain, ecAddress) {
+function createFileChain(fctCli, chain, ecAddress) {
     log.info('Creating file chain...');
 
     return fctCli.addChain(chain, ecAddress);
+}
+
+async function waitOnChainCreation(fctCli, entryHash, chainId) {
+    log.info('Waiting confirmation of chain creation');
+    await fctCli.waitOnRevealAck(entryHash, chainId, 120);
+    log.info('Chain created');
 }
 
 function convertHeaderToFirstEntry(header) {
@@ -187,9 +199,8 @@ function convertHeaderToFirstEntry(header) {
         .build();
 }
 
-function persistParts(chainId, entries, ecpub) {
+function persistParts(fctCli, entries, ecpub) {
     log.info('Persisting parts...');
-    entries.forEach(entry => entry.chainId = chainId);
     return fctCli.addEntries(entries, ecpub);
 }
 
@@ -216,5 +227,5 @@ function sha512(data) {
 }
 
 module.exports = {
-    write
+    Writer
 };

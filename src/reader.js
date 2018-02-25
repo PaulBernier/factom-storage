@@ -9,36 +9,36 @@ const EdDSA = require('elliptic').eddsa,
 
 const ec = new EdDSA('ed25519');
 
-let fctCli;
+class Reader {
+    constructor(opt) {
+        this.fctCli = new FactomCli(opt);
+    }
 
-async function read(chainId, url) {
-    // TODO: take input config
-    fctCli = new FactomCli({
-        host: 'localhost',
-        port: 8088
-    });
-    await fctCli.getProperties().catch(e => {
-        throw 'Failed to reach the Factom Node: ' + e;
-    });
+    async read(chainId) {
+        await this.fctCli.getProperties().catch(e => {
+            throw 'Failed to reach the Factom Node: ' + e;
+        });
 
-    log.info(`Retrieving data from chain ${chainId}...`);
-    const entries = await getEntries(chainId);
+        log.info(`Retrieving data from chain ${chainId}...`);
+        const entries = await getEntries(this.fctCli, chainId);
 
-    log.info('Rebuilding file...');
-    const header = convertFirstEntryToHeader(entries[0]);
-    const parts = convertEntriesToParts(entries.slice(1), header.key, header.fileHash);
-    const zippedData = getData(parts);
-    validateData(header, zippedData);
+        log.info('Rebuilding file...');
+        const header = convertFirstEntryToHeader(entries[0]);
+        const parts = convertEntriesToParts(entries.slice(1), header.key, header.fileHash);
+        const zippedData = getData(parts);
+        validateData(header, zippedData);
 
-    return zlib.unzipAsync(zippedData)
-        .then(data => ({
-            fileName: header.filename.toString(),
-            fileDescription: header.fileDescription.toString(),
-            data: data,
-        }));
+        return zlib.unzipAsync(zippedData)
+            .then(data => ({
+                fileName: header.filename.toString(),
+                fileDescription: header.fileDescription.toString(),
+                data: data,
+            }));
+    }
+
 }
 
-function getEntries(chainId) {
+function getEntries(fctCli, chainId) {
     return fctCli.getAllEntriesOfChain(chainId).catch(e => {
         throw 'Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. ' +
             JSON.stringify(e);
@@ -109,5 +109,5 @@ function validateData(header, data) {
 }
 
 module.exports = {
-    read
+    Reader
 };
