@@ -4,7 +4,6 @@ const crypto = require('crypto'),
     prompt = require('prompt'),
     log = require('winston'),
     zlib = Promise.promisifyAll(require('zlib')),
-    fctUtils = require('factomjs-util'),
     // TODO: package
     factom = require('../../factomjs');
 
@@ -13,7 +12,9 @@ const {
     Chain,
     FactomCli,
     entryCost,
-    chainCost
+    chainCost,
+    getPublicAddress,
+    isValidAddress
 } = factom;
 
 // 35 (mandatory entry header) + 4 (size of extID) + 4 (part order) + 64 (part signature) 
@@ -50,7 +51,7 @@ class Writer {
 }
 
 async function validateRequest(fctCli, ecAddress) {
-    if (!fctUtils.isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
+    if (!isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
         throw `${ecAddress} is not a valid EC address`;
     }
     await fctCli.getProperties().catch(e => {
@@ -114,25 +115,17 @@ function getNumberOfParts(size) {
     return Math.ceil(size / MAX_PARTS_CONTENT_BYTE_SIZE);
 }
 
-function getHumanReadableECPublicKey(ecPrivate) {
-    const secret = fctUtils.privateHumanAddressStringToPrivate(ecPrivate);
-    const key = ec.keyFromSecret(secret);
-    return fctUtils.publicECKeyToHumanAddress(Buffer.from(key.getPublic()));
-}
-
 async function persist(fctCli, header, parts, ecAddress) {
 
     const chain = new Chain(convertHeaderToFirstEntry(header));
     const entries = convertPartsToEntries(parts, chain.chainId);
     const cost = entries.reduce((acc, entry) => acc + entryCost(entry), chainCost(chain));
 
-    // TODO: this logic will be moved inside getBalance library
-    const publicKey = ecAddress.substring(0, 2) === 'EC' ? ecAddress : getHumanReadableECPublicKey(ecAddress);
-
-    const availableBalance = await fctCli.getBalance(publicKey);
+    const publicAddress = getPublicAddress(ecAddress);
+    const availableBalance = await fctCli.getBalance(publicAddress);
 
     if (cost > availableBalance) {
-        throw `EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${ecAddress} is not enough.`;
+        throw `EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${publicAddress} is not enough.`;
     }
 
     log.info(`EC cost: ${cost} (~$${cost * 0.001}) (available balance: ${availableBalance})`);
