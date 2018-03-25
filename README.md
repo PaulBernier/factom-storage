@@ -1,5 +1,9 @@
 # factom-storage
 
+Factom-storage is a simple proof of concept to store and retrieve complete files in the Factom blockchain. That said having a blockchain storage at a fixed rate (not dependending on fluctuation of the market) is not that a crazy idea and can have some actual utility.
+
+Please checkout doc folder for technical details on how your documents are safely uploaded.
+
 ## Installation
 
 ```bash
