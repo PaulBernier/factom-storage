@@ -2,8 +2,7 @@ const EdDSA = require('elliptic').eddsa,
     Promise = require('bluebird'),
     zlib = Promise.promisifyAll(require('zlib')),
     log = require('winston'),
-    // TODO: package
-    { FactomCli } = require('../../factomjs');
+    { FactomCli } = require('factom');
 
 const ec = new EdDSA('ed25519');
 

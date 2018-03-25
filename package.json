@@ -17,6 +17,7 @@
         "colors": "^1.1.2",
         "commander": "^2.14.1",
         "elliptic": "^6.4.0",
+        "factom": "0.1.0-rc.6",
         "factomdjs": "^0.3.0",
         "prompt": "^1.0.0",
         "winston": "^2.4.0"

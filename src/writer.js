@@ -4,8 +4,7 @@ const crypto = require('crypto'),
     prompt = require('prompt'),
     log = require('winston'),
     zlib = Promise.promisifyAll(require('zlib')),
-    // TODO: package
-    factom = require('../../factomjs');
+    factom = require('factom');
 
 const {
     Entry,
