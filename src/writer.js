@@ -27,7 +27,6 @@ class Writer {
         this.fctCli = new FactomCli(opt);
     }
 
-    // TODO: private key should be input here. If absent, use the private EC key?
     async write(fileName, data, ecAddress, fileDescription) {
         validateRequest(this.fctCli, ecAddress);
 
@@ -52,10 +51,10 @@ class Writer {
 
 async function validateRequest(fctCli, ecAddress) {
     if (!isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
-        throw `${ecAddress} is not a valid EC address`;
+        throw new Error(`${ecAddress} is not a valid EC address`);
     }
-    await fctCli.getProperties().catch(e => {
-        throw 'Failed to reach the Factom Node: ' + e;
+    await fctCli.getNodeProperties().catch(e => {
+        throw new Error(`Failed to reach the Factom Node: ${e}`);
     });
 }
 
@@ -125,7 +124,7 @@ async function persist(fctCli, header, parts, ecAddress) {
     const availableBalance = await fctCli.getBalance(publicAddress);
 
     if (cost > availableBalance) {
-        throw `EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${publicAddress} is not enough.`;
+        throw new Error(`EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${publicAddress} is not enough.`);
     }
 
     log.info(`EC cost: ${cost} (~$${cost * 0.001}) (available balance: ${availableBalance})`);
@@ -154,7 +153,7 @@ async function getPromptConfirmation() {
         pattern: /^(yes|y|n|no)$/,
         description: 'Confirm you want to upload? (yes/no)',
         required: true
-    }).catch(function (e) {
+    }).catch(function(e) {
         if (e instanceof Error && e.message === 'canceled') {
             process.stdout.write('\n');
             process.exit(0);
@@ -179,9 +178,8 @@ async function waitOnChainCreation(fctCli, entryHash, chainId) {
 }
 
 function convertHeaderToFirstEntry(header) {
-    return new Entry.Builder()
+    return Entry.builder()
         .extId('factom-storage')
-        // TODO: optimize to int buffer
         .extId(header.version.toString())
         .extId(header.publicKey)
         .extId(header.filename)
@@ -205,7 +203,7 @@ function convertPartToEntry(part, chainId) {
     const orderBuffer = Buffer.alloc(4);
     orderBuffer.writeInt32BE(part.order);
 
-    return new Entry.Builder()
+    return Entry.builder()
         .chainId(chainId)
         .extId(orderBuffer)
         .extId(part.signature)

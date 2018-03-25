@@ -3,9 +3,7 @@ const EdDSA = require('elliptic').eddsa,
     zlib = Promise.promisifyAll(require('zlib')),
     log = require('winston'),
     // TODO: package
-    {
-        FactomCli
-    } = require('../../factomjs');
+    { FactomCli } = require('../../factomjs');
 
 const ec = new EdDSA('ed25519');
 
@@ -15,8 +13,8 @@ class Reader {
     }
 
     async read(chainId) {
-        await this.fctCli.getProperties().catch(e => {
-            throw 'Failed to reach the Factom Node: ' + e;
+        await this.fctCli.getNodeProperties().catch(e => {
+            throw new Error(`Failed to reach the Factom Node: ${e}`);
         });
 
         log.info(`Retrieving data from chain ${chainId}...`);
@@ -40,15 +38,14 @@ class Reader {
 
 function getEntries(fctCli, chainId) {
     return fctCli.getAllEntriesOfChain(chainId).catch(e => {
-        throw 'Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. ' +
-            JSON.stringify(e);
+        throw new Error(`Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. [${e.message}]`);
     });
 }
 
 function convertFirstEntryToHeader(entry) {
     const extIds = entry.extIds;
     if (extIds.length === 0 || extIds[0].toString() !== 'factom-storage') {
-        throw 'First entry of the chain is not a file header entry';
+        throw new Error('First entry of the chain is not a file header entry');
     }
 
     return {
@@ -74,7 +71,7 @@ function convertEntriesToParts(entries, key, fileHash) {
 }
 
 function getValidPartEntries(entries, key, fileHash) {
-    return entries.filter(function (entry) {
+    return entries.filter(function(entry) {
         if (entry.extIds.length < 2) {
             return false;
         }
@@ -101,10 +98,10 @@ function getData(parts) {
 function validateData(header, data) {
 
     if (data.length !== header.size) {
-        throw 'Data length doesn\'t match the size of the original file';
+        throw new Error('Data length doesn\'t match the size of the original file');
     }
     if (!header.key.verify(Buffer.concat([data, header.fileHash]), [...header.signature])) {
-        throw 'Data signature doesn\'t match the signature of the original file';
+        throw new Error('Data signature doesn\'t match the signature of the original file');
     }
 }
 

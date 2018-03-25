@@ -1,20 +1,24 @@
 {
-  "name": "factom-storage",
-  "version": "1.0.0",
-  "description": "",
-  "main": "factom-storage.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Paul Bernier",
-  "license": "MIT",
-  "dependencies": {
-    "bluebird": "^3.5.1",
-    "colors": "^1.1.2",
-    "commander": "^2.14.1",
-    "elliptic": "^6.4.0",
-    "factomdjs": "^0.3.0",
-    "prompt": "^1.0.0",
-    "winston": "^2.4.0"
-  }
+    "name": "factom-storage",
+    "version": "0.1.0",
+    "description": "",
+    "main": "src/factom-storage.js",
+    "bin": {
+        "factom-storage": "./bin/factom-storage.js"
+    },
+    "preferGlobal": true,
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Paul Bernier",
+    "license": "MIT",
+    "dependencies": {
+        "bluebird": "^3.5.1",
+        "colors": "^1.1.2",
+        "commander": "^2.14.1",
+        "elliptic": "^6.4.0",
+        "factomdjs": "^0.3.0",
+        "prompt": "^1.0.0",
+        "winston": "^2.4.0"
+    }
 }
