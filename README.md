@@ -15,7 +15,6 @@ factom-storage upload [options] <file> <EC address for payment>
 
   Upload a file in Factom storage
 
-
   Options:
 
     -m, --meta <meta>      Optional textual meta information about the file to be stored
@@ -36,7 +35,6 @@ factom-storage upload -s '52.202.51.229:8088' -m "My pic!" ./my_picture.jpg Es32
 Usage: factom-storage download <chain ID of the file>
 
   Download a file stored with Factom storage
-
 
   Options:
 

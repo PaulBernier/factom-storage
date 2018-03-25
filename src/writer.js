@@ -28,15 +28,12 @@ class Writer {
     }
 
     async write(fileName, data, ecAddress, fileDescription) {
-        validateRequest(this.fctCli, ecAddress);
+        await validateRequest(this.fctCli, ecAddress);
 
         const secret = crypto.randomBytes(32);
         const key = ec.keyFromSecret(secret);
 
-        const {
-            header,
-            parts
-        } = await getHeaderAndParts(fileName, data, key, fileDescription);
+        const { header, parts } = await getHeaderAndParts(fileName, data, key, fileDescription);
 
         log.debug(header);
 
@@ -133,15 +130,11 @@ async function persist(fctCli, header, parts, ecAddress) {
     if (!confirmation) {
         process.exit(0);
     }
-    const {
-        chainId,
-        entryHash
-    } = await createFileChain(fctCli, chain, ecAddress);
 
-    await waitOnChainCreation(fctCli, entryHash, chainId);
+    await createFileChain(fctCli, chain, ecAddress);
     await persistParts(fctCli, entries, ecAddress);
 
-    return chainId;
+    return chain.chainId.toString('hex');
 }
 
 async function getPromptConfirmation() {
@@ -165,16 +158,10 @@ async function getPromptConfirmation() {
     return ['yes', 'y'].includes(promptResult.confirmation);
 }
 
-function createFileChain(fctCli, chain, ecAddress) {
-    log.info('Creating file chain...');
-
-    return fctCli.addChain(chain, ecAddress);
-}
-
-async function waitOnChainCreation(fctCli, entryHash, chainId) {
-    log.info('Waiting confirmation of chain creation');
-    await fctCli.waitOnRevealAck(entryHash, chainId, 120);
-    log.info('Chain created');
+async function createFileChain(fctCli, chain, ecAddress) {
+    log.info(`Creating file chain [${chain.chainId.toString('hex')}]...`);
+    await fctCli.addChain(chain, ecAddress);
+    log.info('Chain of the file created');
 }
 
 function convertHeaderToFirstEntry(header) {
