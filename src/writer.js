@@ -10,8 +10,6 @@ const {
     Entry,
     Chain,
     FactomCli,
-    entryCost,
-    chainCost,
     getPublicAddress,
     isValidAddress
 } = factom;
@@ -113,8 +111,8 @@ function getNumberOfParts(size) {
 async function persist(fctCli, header, parts, ecAddress) {
 
     const chain = new Chain(convertHeaderToFirstEntry(header));
-    const entries = convertPartsToEntries(parts, chain.chainId);
-    const cost = entries.reduce((acc, entry) => acc + entryCost(entry), chainCost(chain));
+    const entries = convertPartsToEntries(parts, chain.id);
+    const cost = entries.reduce((acc, entry) => acc + entry.ecCost(), chain.ecCost());
 
     const publicAddress = getPublicAddress(ecAddress);
     const availableBalance = await fctCli.getBalance(publicAddress);
@@ -133,7 +131,7 @@ async function persist(fctCli, header, parts, ecAddress) {
     await createFileChain(fctCli, chain, ecAddress);
     await persistParts(fctCli, entries, ecAddress);
 
-    return chain.chainId.toString('hex');
+    return chain.id.toString('hex');
 }
 
 async function getPromptConfirmation() {
@@ -158,21 +156,21 @@ async function getPromptConfirmation() {
 }
 
 async function createFileChain(fctCli, chain, ecAddress) {
-    log.info(`Creating file chain [${chain.chainId.toString('hex')}]...`);
+    log.info(`Creating file chain [${chain.id.toString('hex')}]...`);
     await fctCli.addChain(chain, ecAddress);
     log.info('Chain of the file created');
 }
 
 function convertHeaderToFirstEntry(header) {
     return Entry.builder()
-        .extId('factom-storage')
-        .extId(header.version.toString())
-        .extId(header.publicKey)
-        .extId(header.filename)
-        .extId(header.size.toString())
-        .extId(header.fileHash)
-        .extId(header.signature)
-        .content(header.fileDescription)
+        .extId('factom-storage', 'utf8')
+        .extId(header.version.toString(), 'utf8')
+        .extId(header.publicKey, 'utf8')
+        .extId(header.filename, 'utf8')
+        .extId(header.size.toString(), 'utf8')
+        .extId(header.fileHash, 'utf8')
+        .extId(header.signature, 'utf8')
+        .content(header.fileDescription, 'utf8')
         .build();
 }
 
@@ -191,9 +189,9 @@ function convertPartToEntry(part, chainId) {
 
     return Entry.builder()
         .chainId(chainId)
-        .extId(orderBuffer)
-        .extId(part.signature)
-        .content(part.content)
+        .extId(orderBuffer, 'utf8')
+        .extId(part.signature, 'utf8')
+        .content(part.content, 'utf8')
         .build();
 }
 
