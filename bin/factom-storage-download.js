@@ -9,7 +9,7 @@ const program = require('commander'),
 
 // TODO: add verbose option
 program
-    .usage('Usage: factom-storage download <chain ID of the file>')
+    .usage('[options] <chain ID of the file>')
     .description('Download a file stored with Factom storage')
     .option('-s, --socket <socket>', 'IPAddress:port of factomd API (default localhost:8088)')
     .parse(process.argv);
@@ -23,9 +23,11 @@ const factomdInformation = getConnectionInformation(program.socket, 8088);
 
 (new Reader(factomdInformation)).read(program.args[0])
     .then(function(result) {
-        log.info(colors.green(`File ${result.fileName} recovered from Factom blockchain!`));
-        log.info(colors.green('Description:'));
-        log.info(colors.green(result.fileDescription.toString()));
+        log.info(colors.green(`File "${result.fileName}" downloaded from Factom blockchain!`));
+        if (result.fileDescription) {
+            log.info(colors.green('Description:'));
+            log.info(colors.green(result.fileDescription.toString()));
+        }
 
         return fs.writeFileAsync(result.fileName + '.factom', result.data);
     }).catch(e => log.error(colors.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));

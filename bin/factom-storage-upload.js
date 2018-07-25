@@ -9,7 +9,7 @@ const program = require('commander'),
 
 // TODO: add verbose mode
 program
-    .usage('Usage: factom-storage upload [options] <file> <EC address for payment>')
+    .usage('[options] <file> <EC address for payment>')
     .description('Upload a file in Factom storage')
     .option('-m, --meta <meta>', 'Optional textual meta information about the file to be stored')
     .option('-s, --socket <socket>', 'IPAddress:port of factomd API (default localhost:8088)')
@@ -27,7 +27,7 @@ async function upload(filePath, ecpub, fileDesription, socket) {
 
     return (new Writer(factomdInformation)).write(fileName, buffer, ecpub, fileDesription)
         .then(function(result) {
-            log.info(colors.green(`File ${fileName} was successfully uploaded to Factom in chain ${result.chainId}`));
+            log.info(colors.green(`File "${fileName}" was successfully uploaded to Factom in chain ${result.chainId}`));
             log.info(result);
         });
 }
