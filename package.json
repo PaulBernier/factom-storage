@@ -1,23 +1,39 @@
 {
     "name": "factom-storage",
-    "version": "0.1.2",
-    "description": "",
+    "version": "0.1.3",
+    "description": "Command line tool to store files in Factom blockchain",
     "main": "src/factom-storage.js",
     "bin": {
         "factom-storage": "./bin/factom-storage.js"
     },
-    "preferGlobal": true,
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PaulBernier/factom-storage.git"
+    },
+    "keywords": [
+        "factom",
+        "blockchain",
+        "storage",
+        "transaction",
+        "entry-credit",
+        "upload",
+        "download"
+    ],
     "author": "Paul Bernier",
     "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/PaulBernier/factom-storage/issues"
+    },
+    "homepage": "https://github.com/PaulBernier/factom-storage#readme",
     "dependencies": {
         "bluebird": "^3.5.1",
         "colors": "^1.1.2",
         "commander": "^2.14.1",
         "elliptic": "^6.4.0",
-        "factom": "0.2.5",
+        "factom": "0.2.6",
         "prompt": "^1.0.0",
         "winston": "^2.4.0"
     }

@@ -3,8 +3,7 @@ const crypto = require('crypto'),
     Promise = require('bluebird'),
     prompt = require('prompt'),
     log = require('winston'),
-    zlib = Promise.promisifyAll(require('zlib')),
-    factom = require('factom');
+    zlib = Promise.promisifyAll(require('zlib'));
 
 const {
     Entry,
@@ -12,7 +11,7 @@ const {
     FactomCli,
     getPublicAddress,
     isValidAddress
-} = factom;
+} = require('factom');
 
 // 35 (mandatory entry header) + 4 (size of extID) + 4 (part order) + 64 (part signature) 
 const HEADER_SIZE = 35 + 2 * 2 + 4 + 64;
@@ -53,6 +52,8 @@ async function validateRequest(fctCli, ecAddress) {
 }
 
 async function getHeaderAndParts(fileName, data, key, fileDescription) {
+    log.info('Preparing and signing file for upload...');
+
     const buffer = await zlib.gzipAsync(data);
     const header = getHeader(buffer, key, fileName, fileDescription);
     const parts = getParts(buffer, key, header.fileHash);
@@ -118,10 +119,10 @@ async function persist(fctCli, header, parts, ecAddress) {
     const availableBalance = await fctCli.getBalance(publicAddress);
 
     if (cost > availableBalance) {
-        throw new Error(`EC cost to persist: ${cost}. Available balance (${availableBalance}) of address ${publicAddress} is not enough.`);
+        throw new Error(`EC cost to persist: ${cost.toLocaleString()}. Available balance (${availableBalance.toLocaleString()}) of address ${publicAddress} is not enough.`);
     }
 
-    log.info(`EC cost: ${cost} (~$${cost * 0.001}) (available balance: ${availableBalance})`);
+    log.info(`EC cost: ${cost.toLocaleString()} (~$${cost * 0.001}) (available balance: ${availableBalance.toLocaleString()})`);
 
     const confirmation = await getPromptConfirmation();
     if (!confirmation) {
@@ -157,7 +158,7 @@ async function getPromptConfirmation() {
 
 async function createFileChain(fctCli, chain, ecAddress) {
     log.info(`Creating file chain [${chain.id.toString('hex')}]...`);
-    await fctCli.addChain(chain, ecAddress);
+    await fctCli.add(chain, ecAddress, { commitTimeout: -1, revealTimeout: -1 });
     log.info('Chain of the file created');
 }
 
@@ -176,7 +177,7 @@ function convertHeaderToFirstEntry(header) {
 
 function persistParts(fctCli, entries, ecpub) {
     log.info('Persisting parts...');
-    return fctCli.addEntries(entries, ecpub);
+    return fctCli.add(entries, ecpub, { commitTimeout: -1, revealTimeout: -1 });
 }
 
 function convertPartsToEntries(parts, chainId) {
