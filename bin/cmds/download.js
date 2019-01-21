@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-const log = require('winston'),
-    chalk = require('chalk'),
+const chalk = require('chalk'),
     Promise = require('bluebird'),
     fs = Promise.promisifyAll(require('fs')),
-    { Reader } = require('../../src/reader.js'),
+    { InteractiveReader } = require('../../src/InteractiveReader.js'),
     { getConnectionInformation } = require('../../src/util');
 
 exports.command = 'download <chainid>';
@@ -22,17 +21,19 @@ exports.builder = function (yargs) {
 };
 
 exports.handler = async function (argv) {
+    console.error();
     const factomd = getConnectionInformation(argv.socket, 8088);
-    const reader = new Reader({ factomd });
+    const reader = new InteractiveReader({ factomd });
 
     return reader.read(argv.chainid).then(function (result) {
-        log.info(chalk.green(`File "${result.fileName}" downloaded from Factom blockchain!`));
+        console.error(chalk.green.bold(`\nFile "${result.filename}" successfully downloaded from Factom blockchain.`));
         if (result.meta) {
-            log.info(chalk.green('Description:'));
-            log.info(chalk.green(result.meta.toString()));
+            console.error(chalk.blue.bold('\nMetadata:'));
+            console.error(result.meta);
+            console.error();
         }
 
         return fs.writeFileAsync(result.name + '.factom', result.data);
-    }).catch(e => log.error(chalk.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
+    }).catch(e => console.error(chalk.red.bold(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
 
 };

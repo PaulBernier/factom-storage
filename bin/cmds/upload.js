@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const log = require('winston'),
+const ora = require('ora'),
     path = require('path'),
     chalk = require('chalk'),
     Promise = require('bluebird'),
@@ -37,20 +37,35 @@ exports.builder = function (yargs) {
 };
 
 exports.handler = async function (argv) {
+    console.error();
+
     const factomd = getConnectionInformation(argv.socket, 8088);
     const walletd = getConnectionInformation(argv.wallet, 8089);
     const writer = new InteractiveWriter({ factomd, walletd });
 
     const file = {};
-    file.content = await fs.readFileAsync(argv.file);
+    file.content = await readFile(argv.file);
     file.name = path.basename(argv.file);
     file.meta = argv.meta;
 
     return writer.write(file, argv.ecaddress)
         .then(function (result) {
-            log.info(chalk.green(`File "${file.name}" was successfully uploaded to Factom in chain ${result.chainId}`));
-            log.info(result);
+            console.error(chalk.green.bold(`\nFile "${file.name}" was successfully uploaded to Factom on chain ${result.chainId}.`));
+            console.log(result);
+            console.error();
         })
-        .catch(e => log.error(chalk.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
+        .catch(e => console.error(chalk.red.bold(e instanceof Error ? e.message : JSON.stringify(e, null, 4))) + '\n');
 
 };
+
+async function readFile(file) {
+    const spinner = ora('Reading file...\n').start();
+    try {
+        await fs.readFileAsync(file);
+        spinner.succeed();
+    } catch (e) {
+        spinner.fail();
+        console.error(chalk.red.bold(`Failed to read file: ${e.message}.\n`));
+        process.exit(0);
+    }
+}

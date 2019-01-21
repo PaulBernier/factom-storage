@@ -1,8 +1,9 @@
 const crypto = require('crypto'),
+    ora = require('ora'),
+    chalk = require('chalk'),
     sign = require('tweetnacl/nacl-fast').sign,
     inquirer = require('inquirer'),
-    { getChainAndEntries } = require('./FileToFactomStruct'),
-    log = require('winston');
+    { getChainAndEntries } = require('./FileToFactomStruct');
 
 const {
     FactomCli,
@@ -23,10 +24,10 @@ class InteractiveWriter {
         const key = sign.keyPair.fromSeed(secret);
 
         const { chain, entries } = await getChainAndEntries(file, key);
-        const chainId = await write(this.fctCli, chain, entries, ecAddress);
+        await write(this.fctCli, chain, entries, ecAddress);
 
         return {
-            chainId,
+            chainId: chain.idHex,
             secretKey: secret.toString('hex')
         };
     }
@@ -40,14 +41,32 @@ function validateRequest(ecAddress) {
 
 async function write(fctCli, chain, entries, ecAddress) {
     await costConfirm(fctCli, chain, entries, ecAddress);
+    await addChain(fctCli, chain, ecAddress);
+    await addEntries(fctCli, entries, ecAddress);
+}
 
-    log.info(`Creating file chain [${chain.idHex}]...`);
-    await fctCli.add(chain, ecAddress, { commitTimeout: -1, revealTimeout: -1 });
-    log.info('Chain of the file created');
-    log.info('Persisting parts...');
-    await fctCli.add(entries, ecAddress, { commitTimeout: -1, revealTimeout: -1 });
+async function addChain(fctCli, chain, ecAddress) {
+    const spinner = ora(`Writing file chain ${chalk.yellow(chain.idHex)}...`).start();
 
-    return chain.idHex;
+    try {
+        await fctCli.add(chain, ecAddress, { commitTimeout: -1, revealTimeout: -1 });
+        spinner.succeed();
+    } catch (e) {
+        spinner.fail();
+        throw e;
+    }
+}
+
+async function addEntries(fctCli, entries, ecAddress) {
+    const spinner = ora('Writing file parts entries...').start();
+
+    try {
+        await fctCli.add(entries, ecAddress, { commitTimeout: -1, revealTimeout: -1 });
+        spinner.succeed();
+    } catch (e) {
+        spinner.fail();
+        throw e;
+    }
 }
 
 async function costConfirm(fctCli, chain, entries, ecAddress) {
@@ -59,9 +78,10 @@ async function costConfirm(fctCli, chain, entries, ecAddress) {
         throw new Error(`EC cost to persist: ${cost.toLocaleString()}. Available balance (${availableBalance.toLocaleString()}) of address ${publicAddress} is not enough.`);
     }
 
-    log.info(`EC cost: ${cost.toLocaleString()} (~$${cost * 0.001}) (available balance: ${availableBalance.toLocaleString()})`);
+    console.error(`Cost: ${chalk.yellow(cost.toLocaleString() + ' EC')} (~$${cost * 0.001}) (available balance: ${availableBalance.toLocaleString()} EC)`);
 
-    const answers = await inquirer.prompt([{type: 'confirm', name: 'upload', message: 'Confirm upload?', default: false}]);
+    const answers = await inquirer.prompt([{ type: 'confirm', name: 'upload', message: 'Confirm upload?', default: false }]);
+    console.error();
     if (!answers.upload) {
         process.exit(0);
     }

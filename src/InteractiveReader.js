@@ -1,39 +1,61 @@
 const sign = require('tweetnacl/nacl-fast').sign,
     Promise = require('bluebird'),
     zlib = Promise.promisifyAll(require('zlib')),
-    log = require('winston'),
+    ora = require('ora'),
+    chalk = require('chalk'),
     { FactomCli } = require('factom');
 
-class Reader {
+class InteractiveReader {
     constructor(opt) {
         this.fctCli = new FactomCli(opt);
     }
 
     async read(chainId) {
 
-        log.info(`Retrieving data from chain ${chainId}...`);
         const entries = await getEntries(this.fctCli, chainId);
+        const { zippedData, filename, meta } = rebuildZippedFile(entries, chainId);
 
-        log.info('Rebuilding file...');
+        return zlib.unzipAsync(zippedData)
+            .then(data => ({
+                filename,
+                meta,
+                data: data,
+            }));
+    }
+}
+
+async function getEntries(fctCli, chainId) {
+    const spinner = ora(`Retrieving data from chain ${chalk.yellow(chainId)}...`).start();
+
+    try {
+        const entries = await fctCli.getAllEntriesOfChain(chainId);
+        spinner.succeed();
+        return entries;
+    } catch (e) {
+        spinner.fail();
+        throw new Error(`Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. [${e.message}]`);
+    }
+}
+
+function rebuildZippedFile(entries, chainId) {
+    const spinner = ora('Rebuilding file...').start();
+
+    try {
         const header = convertFirstEntryToHeader(entries[0]);
         const parts = convertEntriesToParts(entries.slice(1), header.publicKey, Buffer.from(chainId, 'hex'));
         const zippedData = getData(parts);
         validateData(header, zippedData);
+        spinner.succeed();
 
-        return zlib.unzipAsync(zippedData)
-            .then(data => ({
-                name: header.filename.toString(),
-                meta: header.meta.toString(),
-                data: data,
-            }));
+        return {
+            zippedData,
+            filename: header.filename.toString(),
+            meta: header.meta.toString()
+        };
+    } catch (e) {
+        spinner.fail();
+        throw e;
     }
-
-}
-
-function getEntries(fctCli, chainId) {
-    return fctCli.getAllEntriesOfChain(chainId).catch(e => {
-        throw new Error(`Failed to download the data from the blockchain. If you recently uploaded your file it may take some time before it gets actually persisted. Otherwise please verify the chain id you provided is correct. [${e.message}]`);
-    });
 }
 
 function convertFirstEntryToHeader(entry) {
@@ -57,7 +79,7 @@ function convertEntriesToParts(entries, publicKey, chainId) {
     const validEntries = getValidPartEntries(entries, publicKey, chainId);
 
     if (validEntries.length !== entries.length) {
-        log.warn(`${entries.length - validEntries.length} invalid entries discarded`);
+        console.error(chalk.orange(`${entries.length - validEntries.length} invalid entries discarded`));
         // TODO: display invalid entry hashes
     }
 
@@ -100,5 +122,5 @@ function validateData(header, data) {
 }
 
 module.exports = {
-    Reader
+    InteractiveReader
 };
