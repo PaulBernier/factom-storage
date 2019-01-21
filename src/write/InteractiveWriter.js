@@ -1,7 +1,6 @@
 const crypto = require('crypto'),
     sign = require('tweetnacl/nacl-fast').sign,
-    Promise = require('bluebird'),
-    prompt = require('prompt'),
+    inquirer = require('inquirer'),
     { getChainAndEntries } = require('./FileToFactomStruct'),
     log = require('winston');
 
@@ -62,32 +61,12 @@ async function costConfirm(fctCli, chain, entries, ecAddress) {
 
     log.info(`EC cost: ${cost.toLocaleString()} (~$${cost * 0.001}) (available balance: ${availableBalance.toLocaleString()})`);
 
-    const confirmation = await getPromptConfirmation();
-    if (!confirmation) {
+    const answers = await inquirer.prompt([{type: 'confirm', name: 'upload', message: 'Confirm upload?', default: false}]);
+    if (!answers.upload) {
         process.exit(0);
     }
 }
 
-async function getPromptConfirmation() {
-    prompt.start();
-
-    const promptResult = await Promise.promisify(prompt.get)({
-        name: 'confirmation',
-        type: 'string',
-        pattern: /^(yes|y|n|no)$/,
-        description: 'Confirm you want to upload? (yes/no)',
-        required: true
-    }).catch(function (e) {
-        if (e instanceof Error && e.message === 'canceled') {
-            process.stdout.write('\n');
-            process.exit(0);
-        } else {
-            throw e;
-        }
-    });
-
-    return ['yes', 'y'].includes(promptResult.confirmation);
-}
 
 module.exports = {
     InteractiveWriter

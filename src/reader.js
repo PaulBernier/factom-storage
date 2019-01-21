@@ -22,8 +22,8 @@ class Reader {
 
         return zlib.unzipAsync(zippedData)
             .then(data => ({
-                fileName: header.filename.toString(),
-                fileDescription: header.fileDescription.toString(),
+                name: header.filename.toString(),
+                meta: header.meta.toString(),
                 data: data,
             }));
     }
@@ -49,7 +49,7 @@ function convertFirstEntryToHeader(entry) {
         size: parseInt(extIds[4]),
         fileHash: extIds[5],
         signature: extIds[6],
-        fileDescription: entry.content
+        meta: entry.content
     };
 }
 
@@ -58,6 +58,7 @@ function convertEntriesToParts(entries, publicKey, chainId) {
 
     if (validEntries.length !== entries.length) {
         log.warn(`${entries.length - validEntries.length} invalid entries discarded`);
+        // TODO: display invalid entry hashes
     }
 
     return validEntries.map(convertEntryToPart);

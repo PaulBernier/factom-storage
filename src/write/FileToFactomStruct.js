@@ -31,7 +31,7 @@ function getChain(buffer, file, key) {
         .extId(size.toString(), 'utf8')
         .extId(fileHash)
         .extId(signature)
-        .content(file.description, 'utf8')
+        .content(file.meta, 'utf8')
         .build();
 
     return new Chain(entry);

@@ -27,12 +27,12 @@ exports.handler = async function (argv) {
 
     return reader.read(argv.chainid).then(function (result) {
         log.info(chalk.green(`File "${result.fileName}" downloaded from Factom blockchain!`));
-        if (result.fileDescription) {
+        if (result.meta) {
             log.info(chalk.green('Description:'));
-            log.info(chalk.green(result.fileDescription.toString()));
+            log.info(chalk.green(result.meta.toString()));
         }
 
-        return fs.writeFileAsync(result.fileName + '.factom', result.data);
+        return fs.writeFileAsync(result.name + '.factom', result.data);
     }).catch(e => log.error(chalk.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
 
 };
