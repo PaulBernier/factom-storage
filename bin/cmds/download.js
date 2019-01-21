@@ -3,7 +3,7 @@
 const chalk = require('chalk'),
     Promise = require('bluebird'),
     fs = Promise.promisifyAll(require('fs')),
-    { InteractiveReader } = require('../../src/InteractiveReader.js'),
+    { InteractiveReader } = require('../../src/read/InteractiveReader.js'),
     { getConnectionInformation } = require('../../src/util');
 
 exports.command = 'download <chainid>';
@@ -33,7 +33,7 @@ exports.handler = async function (argv) {
             console.error();
         }
 
-        return fs.writeFileAsync(result.name + '.factom', result.data);
+        return fs.writeFileAsync(result.filename + '.factom', result.data);
     }).catch(e => console.error(chalk.red.bold(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
 
 };
