@@ -31,7 +31,6 @@
     "dependencies": {
         "bluebird": "^3.5.1",
         "colors": "^1.1.2",
-        "commander": "^2.14.1",
         "factom": "^1.0.0-rc4",
         "prompt": "^1.0.0",
         "tweetnacl": "^1.0.0",

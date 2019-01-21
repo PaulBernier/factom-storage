@@ -22,13 +22,13 @@ class Writer {
         this.fctCli = new FactomCli(opt);
     }
 
-    async write(fileName, data, ecAddress, fileDescription) {
+    async write(file, ecAddress) {
         await validateRequest(ecAddress);
 
         const secret = crypto.randomBytes(32);
         const key = sign.keyPair.fromSeed(secret);
 
-        const { header, parts } = await getHeaderAndParts(fileName, data, key, fileDescription);
+        const { header, parts } = await getHeaderAndParts(file, key);
 
         log.debug(header);
 
@@ -47,11 +47,11 @@ async function validateRequest(ecAddress) {
     }
 }
 
-async function getHeaderAndParts(fileName, data, key, fileDescription) {
+async function getHeaderAndParts(file, key) {
     log.info('Preparing and signing file for upload...');
 
-    const buffer = await zlib.gzipAsync(data);
-    const header = getHeader(buffer, key, fileName, fileDescription);
+    const buffer = await zlib.gzipAsync(file.content);
+    const header = getHeader(buffer, key, file.name, file.meta);
     const parts = getParts(buffer, key, header.fileHash);
 
     return {
