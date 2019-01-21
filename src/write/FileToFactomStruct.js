@@ -1,5 +1,5 @@
 const { Entry, Chain } = require('factom'),
-    crypto = require('crypto'),
+    hashSha512 = require('hash.js/lib/hash/sha/512'),
     Promise = require('bluebird'),
     zlib = Promise.promisifyAll(require('zlib')),
     sign = require('tweetnacl/nacl-fast').sign;
@@ -67,9 +67,7 @@ function getNumberOfParts(size) {
 }
 
 function sha512(data) {
-    const hash = crypto.createHash('sha512');
-    hash.update(data);
-    return hash.digest();
+    return Buffer.from(hashSha512().update(data).digest());
 }
 
 module.exports = {
