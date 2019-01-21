@@ -10,7 +10,7 @@ const {
     Chain,
     FactomCli,
     getPublicAddress,
-    isValidAddress
+    isValidEcAddress
 } = require('factom');
 
 // 4 (size of extID) + 4 (part order) + 64 (part signature) 
@@ -23,7 +23,7 @@ class Writer {
     }
 
     async write(fileName, data, ecAddress, fileDescription) {
-        await validateRequest(this.fctCli, ecAddress);
+        await validateRequest(ecAddress);
 
         const secret = crypto.randomBytes(32);
         const key = sign.keyPair.fromSeed(secret);
@@ -35,19 +35,16 @@ class Writer {
         const chainId = await persist(this.fctCli, header, parts, ecAddress);
 
         return {
-            chainId: chainId,
+            chainId,
             privateKey: secret.toString('hex')
         };
     }
 }
 
-async function validateRequest(fctCli, ecAddress) {
-    if (!isValidAddress(ecAddress) || !['EC', 'Es'].includes(ecAddress.substring(0, 2))) {
+async function validateRequest(ecAddress) {
+    if (!isValidEcAddress(ecAddress)) {
         throw new Error(`${ecAddress} is not a valid EC address`);
     }
-    await fctCli.getNodeProperties().catch(e => {
-        throw new Error(`Failed to reach the Factom Node: ${e}`);
-    });
 }
 
 async function getHeaderAndParts(fileName, data, key, fileDescription) {
@@ -131,7 +128,7 @@ async function persist(fctCli, header, parts, ecAddress) {
     await createFileChain(fctCli, chain, ecAddress);
     await persistParts(fctCli, entries, ecAddress);
 
-    return chain.id.toString('hex');
+    return chain.idHex;
 }
 
 async function getPromptConfirmation() {

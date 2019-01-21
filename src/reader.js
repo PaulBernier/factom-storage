@@ -10,9 +10,6 @@ class Reader {
     }
 
     async read(chainId) {
-        await this.fctCli.getNodeProperties().catch(e => {
-            throw new Error(`Failed to reach the Factom Node: ${e}`);
-        });
 
         log.info(`Retrieving data from chain ${chainId}...`);
         const entries = await getEntries(this.fctCli, chainId);
