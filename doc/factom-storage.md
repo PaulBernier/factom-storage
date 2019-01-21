@@ -39,7 +39,7 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 ### ExtIds
 
 * order (4 bytes): order of the part
-* signature (64 bytes): signature (content + whole file sha512)
+* signature (64 bytes): signature (content + chain ID)
 
 ### Content
 

@@ -16,7 +16,7 @@ class Reader {
 
         log.info('Rebuilding file...');
         const header = convertFirstEntryToHeader(entries[0]);
-        const parts = convertEntriesToParts(entries.slice(1), header.publicKey, header.fileHash);
+        const parts = convertEntriesToParts(entries.slice(1), header.publicKey, Buffer.from(chainId, 'hex'));
         const zippedData = getData(parts);
         validateData(header, zippedData);
 
@@ -53,8 +53,8 @@ function convertFirstEntryToHeader(entry) {
     };
 }
 
-function convertEntriesToParts(entries, publicKey, fileHash) {
-    const validEntries = getValidPartEntries(entries, publicKey, fileHash);
+function convertEntriesToParts(entries, publicKey, chainId) {
+    const validEntries = getValidPartEntries(entries, publicKey, chainId);
 
     if (validEntries.length !== entries.length) {
         log.warn(`${entries.length - validEntries.length} invalid entries discarded`);
@@ -63,13 +63,13 @@ function convertEntriesToParts(entries, publicKey, fileHash) {
     return validEntries.map(convertEntryToPart);
 }
 
-function getValidPartEntries(entries, publicKey, fileHash) {
+function getValidPartEntries(entries, publicKey, chainId) {
     return entries.filter(function (entry) {
         if (entry.extIds.length < 2) {
             return false;
         }
 
-        return sign.detached.verify(Buffer.concat([entry.content, fileHash]), entry.extIds[1], publicKey);
+        return sign.detached.verify(Buffer.concat([entry.content, chainId]), entry.extIds[1], publicKey);
     });
 }
 

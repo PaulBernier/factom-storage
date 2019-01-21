@@ -5,7 +5,7 @@ const log = require('winston'),
     chalk = require('chalk'),
     Promise = require('bluebird'),
     fs = Promise.promisifyAll(require('fs')),
-    { Writer } = require('../../src/writer.js'),
+    { InteractiveWriter } = require('../../src/write/InteractiveWriter.js'),
     { getConnectionInformation } = require('../../src/util');
 
 exports.command = 'upload <file>';
@@ -39,7 +39,7 @@ exports.builder = function (yargs) {
 exports.handler = async function (argv) {
     const factomd = getConnectionInformation(argv.socket, 8088);
     const walletd = getConnectionInformation(argv.wallet, 8089);
-    const writer = new Writer({ factomd, walletd });
+    const writer = new InteractiveWriter({ factomd, walletd });
 
     const file = {};
     file.content = await fs.readFileAsync(argv.file);
