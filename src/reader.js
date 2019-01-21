@@ -1,10 +1,8 @@
-const EdDSA = require('elliptic').eddsa,
+const sign = require('tweetnacl/nacl-fast').sign,
     Promise = require('bluebird'),
     zlib = Promise.promisifyAll(require('zlib')),
     log = require('winston'),
     { FactomCli } = require('factom');
-
-const ec = new EdDSA('ed25519');
 
 class Reader {
     constructor(opt) {
@@ -21,7 +19,7 @@ class Reader {
 
         log.info('Rebuilding file...');
         const header = convertFirstEntryToHeader(entries[0]);
-        const parts = convertEntriesToParts(entries.slice(1), header.key, header.fileHash);
+        const parts = convertEntriesToParts(entries.slice(1), header.publicKey, header.fileHash);
         const zippedData = getData(parts);
         validateData(header, zippedData);
 
@@ -54,13 +52,12 @@ function convertFirstEntryToHeader(entry) {
         size: parseInt(extIds[4]),
         fileHash: extIds[5],
         signature: extIds[6],
-        fileDescription: entry.content,
-        key: ec.keyFromPublic([...extIds[2]])
+        fileDescription: entry.content
     };
 }
 
-function convertEntriesToParts(entries, key, fileHash) {
-    const validEntries = getValidPartEntries(entries, key, fileHash);
+function convertEntriesToParts(entries, publicKey, fileHash) {
+    const validEntries = getValidPartEntries(entries, publicKey, fileHash);
 
     if (validEntries.length !== entries.length) {
         log.warn(`${entries.length - validEntries.length} invalid entries discarded`);
@@ -69,13 +66,13 @@ function convertEntriesToParts(entries, key, fileHash) {
     return validEntries.map(convertEntryToPart);
 }
 
-function getValidPartEntries(entries, key, fileHash) {
-    return entries.filter(function(entry) {
+function getValidPartEntries(entries, publicKey, fileHash) {
+    return entries.filter(function (entry) {
         if (entry.extIds.length < 2) {
             return false;
         }
 
-        return key.verify(Buffer.concat([entry.content, fileHash]), [...entry.extIds[1]]);
+        return sign.detached.verify(Buffer.concat([entry.content, fileHash]), entry.extIds[1], publicKey);
     });
 }
 
@@ -99,7 +96,7 @@ function validateData(header, data) {
     if (data.length !== header.size) {
         throw new Error('Data length doesn\'t match the size of the original file');
     }
-    if (!header.key.verify(Buffer.concat([data, header.fileHash]), [...header.signature])) {
+    if (!sign.detached.verify(data, header.signature, header.publicKey)) {
         throw new Error('Data signature doesn\'t match the signature of the original file');
     }
 }

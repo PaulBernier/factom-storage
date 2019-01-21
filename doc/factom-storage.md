@@ -22,13 +22,13 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 
 ### ExtIds
 
-* 'factom-storage': humand readable marker that it is a factom-storage chain
+* 'factom-storage': human readable marker that it is a factom-storage chain
 * version: version of factom-storage used to store the file. Will be used to recover the file if multiple versions (with different storage scheme) are introduced
 * filename: original filename. Used when recovering the file
 * size: size of the file. Mostly indicative, used as an extra validation check (but signature would already cover that)
 * file hash: sha512 of the file. It's used as a nonce when doing signing operations in order to protect against replay attacks
 * publicKey: EdDSA ed25519 public key corresponding to the private key used to sign the file and all the parts
-* signature: ed25519 signature of the whole file concatenated with the file hash (nonce)
+* signature: ed25519 signature of the whole file
 
 ### Content
 
@@ -39,7 +39,7 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 ### ExtIds
 
 * order (4 bytes): order of the part
-* signature (64 bytes): signature of the part (what's inside the content of the entry)
+* signature (64 bytes): signature (content + whole file sha512)
 
 ### Content
 

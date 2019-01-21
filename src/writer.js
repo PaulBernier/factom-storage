@@ -1,5 +1,5 @@
 const crypto = require('crypto'),
-    EdDSA = require('elliptic').eddsa,
+    sign = require('tweetnacl/nacl-fast').sign,
     Promise = require('bluebird'),
     prompt = require('prompt'),
     log = require('winston'),
@@ -13,10 +13,9 @@ const {
     isValidAddress
 } = require('factom');
 
-// 35 (mandatory entry header) + 4 (size of extID) + 4 (part order) + 64 (part signature) 
-const HEADER_SIZE = 35 + 2 * 2 + 4 + 64;
-const MAX_PARTS_CONTENT_BYTE_SIZE = 10275 - HEADER_SIZE;
-const ec = new EdDSA('ed25519');
+// 4 (size of extID) + 4 (part order) + 64 (part signature) 
+const PARTS_HEADER_SIZE = 2 * 2 + 4 + 64;
+const MAX_PARTS_CONTENT_BYTE_SIZE = 10240 - PARTS_HEADER_SIZE;
 
 class Writer {
     constructor(opt) {
@@ -27,7 +26,7 @@ class Writer {
         await validateRequest(this.fctCli, ecAddress);
 
         const secret = crypto.randomBytes(32);
-        const key = ec.keyFromSecret(secret);
+        const key = sign.keyPair.fromSeed(secret);
 
         const { header, parts } = await getHeaderAndParts(fileName, data, key, fileDescription);
 
@@ -68,8 +67,8 @@ function getHeader(buffer, key, fileName, fileDescription) {
     const size = buffer.length;
 
     const fileHash = sha512(buffer);
-    const publicKey = Buffer.from(key.getPublic());
-    const signature = Buffer.from(key.sign(Buffer.concat([buffer, fileHash])).toBytes());
+    const publicKey = Buffer.from(key.publicKey);
+    const signature = Buffer.from(sign.detached(buffer, key.secretKey));
 
     return {
         version: 1,
@@ -96,7 +95,7 @@ function getParts(buffer, key, fileHash) {
 
 function getPart(buffer, i, key, fileHash) {
     const content = buffer.slice(i * MAX_PARTS_CONTENT_BYTE_SIZE, Math.min(MAX_PARTS_CONTENT_BYTE_SIZE * (i + 1), buffer.length));
-    const signature = Buffer.from(key.sign(Buffer.concat([content, fileHash])).toBytes());
+    const signature = Buffer.from(sign.detached(Buffer.concat([content, fileHash]), key.secretKey));
 
     return {
         content: content,
