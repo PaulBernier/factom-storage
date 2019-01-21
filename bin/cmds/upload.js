@@ -2,7 +2,7 @@
 
 const log = require('winston'),
     path = require('path'),
-    colors = require('colors'),
+    chalk = require('chalk'),
     Promise = require('bluebird'),
     fs = Promise.promisifyAll(require('fs')),
     { Writer } = require('../../src/writer.js'),
@@ -48,9 +48,9 @@ exports.handler = async function (argv) {
 
     return writer.write(file, argv.ecaddress)
         .then(function (result) {
-            log.info(colors.green(`File "${file.name}" was successfully uploaded to Factom in chain ${result.chainId}`));
+            log.info(chalk.green(`File "${file.name}" was successfully uploaded to Factom in chain ${result.chainId}`));
             log.info(result);
         })
-        .catch(e => log.error(colors.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
+        .catch(e => log.error(chalk.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
 
 };

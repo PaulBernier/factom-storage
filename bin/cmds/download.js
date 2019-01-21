@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const log = require('winston'),
-    colors = require('colors'),
+    chalk = require('chalk'),
     Promise = require('bluebird'),
     fs = Promise.promisifyAll(require('fs')),
     { Reader } = require('../../src/reader.js'),
@@ -26,13 +26,13 @@ exports.handler = async function (argv) {
     const reader = new Reader({ factomd });
 
     return reader.read(argv.chainid).then(function (result) {
-        log.info(colors.green(`File "${result.fileName}" downloaded from Factom blockchain!`));
+        log.info(chalk.green(`File "${result.fileName}" downloaded from Factom blockchain!`));
         if (result.fileDescription) {
-            log.info(colors.green('Description:'));
-            log.info(colors.green(result.fileDescription.toString()));
+            log.info(chalk.green('Description:'));
+            log.info(chalk.green(result.fileDescription.toString()));
         }
 
         return fs.writeFileAsync(result.fileName + '.factom', result.data);
-    }).catch(e => log.error(colors.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
+    }).catch(e => log.error(chalk.red(e instanceof Error ? e.message : JSON.stringify(e, null, 4))));
 
 };
