@@ -61,8 +61,9 @@ exports.handler = async function (argv) {
 async function readFile(file) {
     const spinner = ora('Reading file...\n').start();
     try {
-        await fs.readFileAsync(file);
+        const buffer = await fs.readFileAsync(file);
         spinner.succeed();
+        return buffer;
     } catch (e) {
         spinner.fail();
         console.error(chalk.red.bold(`Failed to read file: ${e.message}.\n`));

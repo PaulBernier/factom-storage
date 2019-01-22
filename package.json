@@ -34,6 +34,7 @@
         "factom": "^1.0.0-rc4",
         "hash.js": "^1.1.7",
         "inquirer": "^6.2.1",
+        "lodash.uniqby": "^4.7.0",
         "ora": "^3.0.0",
         "tweetnacl": "^1.0.0",
         "yargs": "^12.0.5"

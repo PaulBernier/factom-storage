@@ -3,6 +3,7 @@ const sign = require('tweetnacl/nacl-fast').sign,
     zlib = Promise.promisifyAll(require('zlib')),
     ora = require('ora'),
     chalk = require('chalk'),
+    uniqBy = require('lodash.uniqby'),
     { FactomCli } = require('factom');
 
 class InteractiveReader {
@@ -77,12 +78,6 @@ function convertFirstEntryToHeader(entry) {
 
 function convertEntriesToParts(entries, publicKey, chainId) {
     const validEntries = getValidPartEntries(entries, publicKey, chainId);
-
-    if (validEntries.length !== entries.length) {
-        console.error(chalk.orange(`${entries.length - validEntries.length} invalid entries discarded`));
-        // TODO: display invalid entry hashes
-    }
-
     return validEntries.map(convertEntryToPart);
 }
 
@@ -92,7 +87,7 @@ function getValidPartEntries(entries, publicKey, chainId) {
             return false;
         }
 
-        return sign.detached.verify(Buffer.concat([entry.content, chainId]), entry.extIds[1], publicKey);
+        return sign.detached.verify(Buffer.concat([entry.extIds[0], entry.content, chainId]), entry.extIds[1], publicKey);
     });
 }
 
@@ -105,7 +100,8 @@ function convertEntryToPart(entry) {
 }
 
 function getData(parts) {
-    const data = parts.sort((a, b) => a.order - b.order)
+    const uniqueParts = uniqBy(parts, p => p.order);
+    const data = uniqueParts.sort((a, b) => a.order - b.order)
         .map(p => p.content);
 
     return Buffer.concat(data);

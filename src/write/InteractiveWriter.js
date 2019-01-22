@@ -35,7 +35,7 @@ class InteractiveWriter {
 
 function validateRequest(ecAddress) {
     if (!isValidEcAddress(ecAddress)) {
-        throw new Error(`${ecAddress} is not a valid EC address`);
+        throw new Error(`${ecAddress} is not a valid EC address.`);
     }
 }
 

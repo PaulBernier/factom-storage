@@ -10,11 +10,21 @@ const MAX_PARTS_CONTENT_BYTE_SIZE = 10240 - PARTS_HEADER_SIZE;
 const CURRENT_VERSION = '1';
 
 async function getChainAndEntries(file, key) {
+    validateFile(file);
     const buffer = await zlib.gzipAsync(file.content);
     const chain = getChain(buffer, file, key);
     const entries = getEntries(buffer, chain.id, key);
 
     return { chain, entries };
+}
+
+function validateFile(file) {
+    if (!Buffer.isBuffer(file.content)) {
+        throw new Error('File content must be a Buffer.');
+    }
+    if (!file.name) {
+        throw new Error('A file name must be provided.');
+    }
 }
 
 function getChain(buffer, file, key) {
@@ -49,10 +59,10 @@ function getEntries(buffer, chainId, key) {
 }
 
 function getEntry(buffer, order, chainId, key) {
-    const content = buffer.slice(order * MAX_PARTS_CONTENT_BYTE_SIZE, Math.min(MAX_PARTS_CONTENT_BYTE_SIZE * (order + 1), buffer.length));
-    const signature = Buffer.from(sign.detached(Buffer.concat([content, chainId]), key.secretKey));
     const orderBuffer = Buffer.alloc(4);
     orderBuffer.writeInt32BE(order);
+    const content = buffer.slice(order * MAX_PARTS_CONTENT_BYTE_SIZE, Math.min(MAX_PARTS_CONTENT_BYTE_SIZE * (order + 1), buffer.length));
+    const signature = Buffer.from(sign.detached(Buffer.concat([orderBuffer, content, chainId]), key.secretKey));
 
     return Entry.builder()
         .chainId(chainId)
