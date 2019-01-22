@@ -10,10 +10,10 @@ const PARTS_HEADER_SIZE = 2 * 2 + 4 + 64;
 const MAX_PARTS_CONTENT_BYTE_SIZE = 10240 - PARTS_HEADER_SIZE;
 const CURRENT_VERSION = '1';
 
-async function getChainAndEntries(file, secret) {
+async function getChainAndEntries(file, signingSecret) {
     validateFile(file);
 
-    const key = sign.keyPair.fromSeed(getSeed(secret));
+    const key = sign.keyPair.fromSeed(getSeed(signingSecret));
     const buffer = await zlib.gzipAsync(file.content);
     const chain = getChain(buffer, file, key);
     const entries = getEntries(buffer, chain.id, key);
@@ -21,11 +21,11 @@ async function getChainAndEntries(file, secret) {
     return { chain, entries };
 }
 
-function getSeed(secret) {
-    if (identity.isValidSecretIdentityKey(secret)) {
-        return identity.extractCryptoMaterial(secret);
+function getSeed(signingSecret) {
+    if (identity.isValidSecretIdentityKey(signingSecret)) {
+        return identity.extractCryptoMaterial(signingSecret);
     } else {
-        return Buffer.from(secret, 'hex');
+        return Buffer.from(signingSecret, 'hex');
     }
 }
 

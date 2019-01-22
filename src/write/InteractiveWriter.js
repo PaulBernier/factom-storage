@@ -16,18 +16,36 @@ class InteractiveWriter {
         this.fctCli = new FactomCli(opt);
     }
 
-    async write(file, ecAddress) {
+    async write(file, ecAddress, key) {
         validateRequest(ecAddress);
 
-        const idKeyPair = identity.generateRandomIdentityKeyPair();
-
-        const { chain, entries } = await getChainAndEntries(file, idKeyPair.secret);
+        const secretKey = await getSecretKey(this.fctCli, key);
+        const { chain, entries } = await getChainAndEntries(file, secretKey);
         await write(this.fctCli, chain, entries, ecAddress);
 
-        return {
-            chainId: chain.idHex,
-            idKeyPair
-        };
+        const result = { chainId: chain.idHex, publicKey: identity.getPublicIdentityKey(secretKey) };
+        // If a random key was generated on-demand it needs to be returned to the user
+        if (!key) {
+            result.secretKey = secretKey;
+        }
+
+        return result;
+    }
+}
+
+async function getSecretKey(cli, key) {
+
+    if (key) {
+        if (identity.isValidSecretIdentityKey(key)) {
+            return key;
+        } else if (identity.isValidPublicIdentityKey(key)) {
+            const { secret } = await cli.walletdApi('identity-key', { public: key });
+            return secret;
+        } else {
+            return identity.seedToSecretIdentityKey(key);
+        }
+    } else {
+        return identity.generateRandomIdentityKeyPair().secret;
     }
 }
 

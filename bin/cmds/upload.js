@@ -22,6 +22,10 @@ exports.builder = function (yargs) {
         type: 'string',
         describe: 'IPAddress:port of walletd API',
         default: 'localhost:8089'
+    }).option('key', {
+        alias: 'k',
+        type: 'string',
+        describe: 'A Factom digital identity key (idpub or idsec) or a 32-byte seed to be used to sign the file'
     }).option('ecaddress', {
         alias: 'ec',
         required: true,
@@ -48,7 +52,7 @@ exports.handler = async function (argv) {
     file.name = path.basename(argv.file);
     file.meta = argv.meta;
 
-    return writer.write(file, argv.ecaddress)
+    return writer.write(file, argv.ecaddress, argv.key)
         .then(function (result) {
             console.error(chalk.green.bold(`\nFile "${file.name}" was successfully uploaded to Factom on chain ${result.chainId}.`));
             console.log(result);

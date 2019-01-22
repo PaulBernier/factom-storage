@@ -28,9 +28,10 @@ exports.handler = async function (argv) {
     return reader.read(argv.chainid).then(function (result) {
         console.error(chalk.green.bold(`\nFile "${result.filename}" successfully downloaded from Factom blockchain.`));
         console.error(chalk.blue.bold('\nPublic Key:') + ` ${result.publicKey.idpub} (raw: ${result.publicKey.raw})`);
+        console.error();
 
         if (result.meta) {
-            console.error(chalk.blue.bold('\nMetadata:'));
+            console.error(chalk.blue.bold('Metadata:'));
             console.error(result.meta);
             console.error();
         }
