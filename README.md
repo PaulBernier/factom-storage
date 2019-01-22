@@ -20,15 +20,15 @@ factom-storage upload <file>
 Upload a file to the Factom blockchain.
 
 Positionals:
-  file  File to upload to Factom.                                                                                                                                                                 [required]
+  file  File to upload to Factom                                                                     [required]
 
 Options:
-  --help             Show help                                                                                                                                                                     [boolean]
-  --version          Show version number                                                                                                                                                           [boolean]
-  --socket, -s       IPAddress:port of factomd API.                                                                                                                     [string] [default: "localhost:8088"]
-  --wallet, -w       IPAddress:port of walletd API.                                                                                                                     [string] [default: "localhost:8089"]
-  --ecaddress, --ec  EC address to pay for the created chain and entries.                                                                                                                [string] [required]
-  --meta, -m         Textual meta information about the file to be stored                                                                                                                           [string]
+  --help             Show help                                                                        [boolean]
+  --version          Show version number                                                              [boolean]
+  --socket, -s       IPAddress:port of factomd API                         [string] [default: "localhost:8088"]
+  --wallet, -w       IPAddress:port of walletd API                         [string] [default: "localhost:8089"]
+  --ecaddress, --ec  EC address to pay for the created chain and entries                    [string] [required]
+  --meta, -m         Textual meta information about the file to be stored                              [string]
 ```
 
 ```bash
@@ -46,12 +46,12 @@ factom-storage download <chainid>
 Download a file from the Factom blockchain.
 
 Positionals:
-  chainid  Chain ID of the file to download.                                                                                                                                                      [required]
+  chainid  Chain ID of the file to download                              [required]
 
 Options:
-  --help        Show help                                                                                                                                                                          [boolean]
-  --version     Show version number                                                                                                                                                                [boolean]
-  --socket, -s  IPAddress:port of factomd API.                                                                                                                          [string] [default: "localhost:8088"]
+  --help        Show help                                                 [boolean]
+  --version     Show version number                                       [boolean]
+  --socket, -s  IPAddress:port of factomd API  [string] [default: "localhost:8088"]
 ```
 
 ```bash
