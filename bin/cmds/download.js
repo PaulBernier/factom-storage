@@ -13,10 +13,10 @@ exports.builder = function (yargs) {
     return yargs.option('socket', {
         alias: 's',
         type: 'string',
-        describe: 'IPAddress:port of factomd API.',
+        describe: 'IPAddress:port of factomd API',
         default: 'localhost:8088'
     }).positional('chainid', {
-        describe: 'Chain ID of the file to download.'
+        describe: 'Chain ID of the file to download'
     });
 };
 
