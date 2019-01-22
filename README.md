@@ -2,7 +2,7 @@
 
 Factom-storage is a simple proof of concept to store and retrieve complete files in the Factom blockchain. That said having a blockchain storage at a fixed rate (not dependending on fluctuation of the market) is not that a crazy idea and can have some actual utility.
 
-Please checkout doc folder for technical details on how your documents are safely uploaded.
+Please checkout doc folder for technical details on how your documents are uploaded.
 
 ## Installation
 
@@ -15,35 +15,43 @@ sudo npm install -g factom-storage
 ### Upload
 
 ```bash
-factom-storage upload [options] <file> <EC address for payment>
+factom-storage upload <file>
 
-  Upload a file in Factom storage
+Upload a file to the Factom blockchain.
 
-  Options:
+Positionals:
+  file  File to upload to Factom.                                                                                                                                                                 [required]
 
-    -m, --meta <meta>      Optional textual meta information about the file to be stored
-    -s, --socket <socket>  IPAddress:port of factomd API (default localhost:8088)
-    -h, --help             output usage information
+Options:
+  --help             Show help                                                                                                                                                                     [boolean]
+  --version          Show version number                                                                                                                                                           [boolean]
+  --socket, -s       IPAddress:port of factomd API.                                                                                                                     [string] [default: "localhost:8088"]
+  --wallet, -w       IPAddress:port of walletd API.                                                                                                                     [string] [default: "localhost:8089"]
+  --ecaddress, --ec  EC address to pay for the created chain and entries.                                                                                                                [string] [required]
+  --meta, -m         Textual meta information about the file to be stored                                                                                                                           [string]
 ```
 
 ```bash
-# If you provide a public EC address for payment factom-storage will attempt to retrieve the private key from a local walletd running on port 8089
-factom-storage upload -s '52.202.51.229:8088' -m "My pic!" ./my_picture.jpg EC2vXWYkAPduo3oo2tPuzA44Tm7W6Cj7SeBr3fBnzswbG5rrkSTD
-# If you provide directly a private EC address the tool doesn't need access to walletd
-factom-storage upload -s '52.202.51.229:8088' -m "My pic!" ./my_picture.jpg Es32PjobTxPTd73dohEFRegMFRLv3X5WZ4FXEwNN8kE2pMDfeMyk
+# If you provide a public EC address for payment factom-storage will attempt to retrieve the private key from a local walletd running on port 8089 (wallet location can be specified with -w flag).
+factom-storage upload -s '52.202.51.229:8088' -m "My pic!" --ec EC2vXWYkAPduo3oo2tPuzA44Tm7W6Cj7SeBr3fBnzswbG5rrkSTD ./my_picture.jpg
+# If you provide directly a private EC address the tool does not need access walletd.
+factom-storage upload -s '52.202.51.229:8088' -m "My pic!" --ec Es32PjobTxPTd73dohEFRegMFRLv3X5WZ4FXEwNN8kE2pMDfeMyk ./my_picture.jpg
 ```
 
 ### Download
 
 ```bash
-Usage: factom-storage download <chain ID of the file>
+factom-storage download <chainid>
 
-  Download a file stored with Factom storage
+Download a file from the Factom blockchain.
 
-  Options:
+Positionals:
+  chainid  Chain ID of the file to download.                                                                                                                                                      [required]
 
-    -s, --socket <socket>  IPAddress:port of factomd API (default localhost:8088)
-    -h, --help             output usage information
+Options:
+  --help        Show help                                                                                                                                                                          [boolean]
+  --version     Show version number                                                                                                                                                                [boolean]
+  --socket, -s  IPAddress:port of factomd API.                                                                                                                          [string] [default: "localhost:8088"]
 ```
 
 ```bash
