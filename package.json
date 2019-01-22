@@ -32,6 +32,7 @@
         "bluebird": "^3.5.1",
         "chalk": "^2.4.2",
         "factom": "^1.0.0-rc4",
+        "factom-identity-lib": "^0.2.0-rc4",
         "hash.js": "^1.1.7",
         "inquirer": "^6.2.1",
         "lodash.uniqby": "^4.7.0",

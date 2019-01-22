@@ -4,6 +4,7 @@ const sign = require('tweetnacl/nacl-fast').sign,
     ora = require('ora'),
     chalk = require('chalk'),
     uniqBy = require('lodash.uniqby'),
+    { keyToPublicIdentityKey } = require('factom-identity-lib').digital,
     { FactomCli } = require('factom');
 
 class InteractiveReader {
@@ -14,13 +15,14 @@ class InteractiveReader {
     async read(chainId) {
 
         const entries = await getEntries(this.fctCli, chainId);
-        const { zippedData, filename, meta } = rebuildZippedFile(entries, chainId);
+        const { zippedData, filename, meta, publicKey } = rebuildZippedFile(entries, chainId);
 
         return zlib.unzipAsync(zippedData)
             .then(data => ({
                 filename,
                 meta,
                 data: data,
+                publicKey: { raw: publicKey.toString('hex'), idpub: keyToPublicIdentityKey(publicKey) }
             }));
     }
 }
@@ -51,7 +53,8 @@ function rebuildZippedFile(entries, chainId) {
         return {
             zippedData,
             filename: header.filename.toString(),
-            meta: header.meta.toString()
+            meta: header.meta.toString(),
+            publicKey: header.publicKey
         };
     } catch (e) {
         spinner.fail();

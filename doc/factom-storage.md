@@ -8,6 +8,7 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 
 * File path.
 * (Optional) File meta data.
+* (Optional) Identity key for authentication. Auto generated otherwise.
 * EC address to pay.
 
 ## Process
@@ -16,7 +17,7 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 * Chain is created and contains the "header" of the file (various information to retrieve the file and check its integrity).
 * File is split in chunks (of a bit less than 10kb, the maximum allowed per EC).
 * File part entries are created and added to the chain concurrently (no need to insert them sequentially as each part has its order).
-* Return the chainId and the private key used to sign (to optionaly prove ownership of the upload).
+* Return the chainId of the file and the key pair used to sign if it was auto generated (to optionaly prove ownership of the upload).
 
 ## Chain first entry
 
@@ -27,8 +28,8 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 * filename: original filename. Used when recovering the file.
 * size: size of the file. Mostly indicative, used as an extra validation check.
 * file hash: sha512 of the file.
-* publicKey: EdDSA ed25519 public key corresponding to the private key used to sign the file and all the parts.
-* signature: ed25519 signature of the whole file.
+* publicKey: raw ed25519 public key corresponding to the private key used to sign the file and all the parts.
+* signature: signature of the whole file.
 
 ### Content
 
@@ -39,7 +40,7 @@ Factom-storage is a simple proof of concept to store and retrieve complete files
 ### ExtIds
 
 * order (4 bytes): order of the part.
-* signature (64 bytes): signature (order + content + chain ID).
+* signature (64 bytes): signature of (order + content + chain ID) using the key declared in the first entry.
 
 ### Content
 

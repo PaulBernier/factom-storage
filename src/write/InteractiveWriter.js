@@ -1,7 +1,6 @@
-const crypto = require('crypto'),
-    ora = require('ora'),
+const ora = require('ora'),
     chalk = require('chalk'),
-    sign = require('tweetnacl/nacl-fast').sign,
+    identity = require('factom-identity-lib').digital,
     inquirer = require('inquirer'),
     { getChainAndEntries } = require('./FileToFactomStruct');
 
@@ -20,15 +19,14 @@ class InteractiveWriter {
     async write(file, ecAddress) {
         validateRequest(ecAddress);
 
-        const secret = crypto.randomBytes(32);
-        const key = sign.keyPair.fromSeed(secret);
+        const idKeyPair = identity.generateRandomIdentityKeyPair();
 
-        const { chain, entries } = await getChainAndEntries(file, key);
+        const { chain, entries } = await getChainAndEntries(file, idKeyPair.secret);
         await write(this.fctCli, chain, entries, ecAddress);
 
         return {
             chainId: chain.idHex,
-            secretKey: secret.toString('hex')
+            idKeyPair
         };
     }
 }
@@ -78,7 +76,8 @@ async function costConfirm(fctCli, chain, entries, ecAddress) {
         throw new Error(`EC cost to persist: ${cost.toLocaleString()}. Available balance (${availableBalance.toLocaleString()}) of address ${publicAddress} is not enough.`);
     }
 
-    console.error(`Cost: ${chalk.yellow(cost.toLocaleString() + ' EC')} (~$${cost * 0.001}) (available balance: ${availableBalance.toLocaleString()} EC)`);
+    const dollarCost = (cost * 0.001).toLocaleString();
+    console.error(`Cost: ${chalk.yellow(cost.toLocaleString() + ' EC')} (~$${dollarCost}) (available balance: ${availableBalance.toLocaleString()} EC)`);
 
     const answers = await inquirer.prompt([{ type: 'confirm', name: 'upload', message: 'Confirm upload?', default: false }]);
     console.error();
